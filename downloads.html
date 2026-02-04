@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baixar - Fusion Cloud Games</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .downloads-page { background: #0B0E1A; min-height: 100vh; }
+    .downloads-header { padding: 2rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .downloads-container { width: 90%; max-width: 1180px; margin: 0 auto; }
+    .downloads-title { font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 1rem; }
+    .downloads-subtitle { color: rgba(255,255,255,0.8); margin-bottom: 1rem; }
+    .segmented { display: inline-flex; background: rgba(14, 16, 28, 0.8); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(99,102,241,0.2); }
+    .segmented button { padding: 0.75rem 1.25rem; color: rgba(255,255,255,0.9); background: transparent; border: none; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: .5rem; }
+    .segmented button svg { width: 20px; height: 20px; }
+    .segmented button.active { background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 50%, #A855F7 100%); color: #fff; }
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; }
+    .download-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 2rem; }
+    .card-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .app-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; }
+    .icon-parsec { background: linear-gradient(135deg, #0EA5E9 0%, #22D3EE 100%); }
+    .icon-moonlight { background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); }
+    .icon-zerotier { background: linear-gradient(135deg, #F59E0B 0%, #FB7185 100%); }
+    .download-card h3 { color: #fff; font-size: 1.5rem; font-weight: 800; }
+    .download-card p { color: rgba(255,255,255,0.85); }
+    .features { list-style: none; padding: 0; margin: 1rem 0; }
+    .features li { display: flex; align-items: center; gap: .5rem; color: rgba(255,255,255,0.9); margin-bottom: .5rem; }
+    .features li::before { content: '✓'; color: #22C55E; font-weight: 800; }
+    .availability { margin: 1rem 0; padding: .75rem 1rem; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: rgba(255,255,255,0.9); display: inline-flex; gap: .5rem; align-items: center; }
+    .actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .btn-action { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .9rem 1.25rem; border-radius: 999px; text-decoration: none; font-weight: 800; }
+    .btn-primary { background: linear-gradient(135deg, #A855F7 0%, #6366F1 100%); color: #fff; }
+    .btn-outline { background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+    .availability.unavailable { border-color: rgba(244, 63, 94, 0.4); color: #F43F5E; }
+    .btn-disabled { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.5) !important; border: 1px dashed rgba(255,255,255,0.15) !important; cursor: not-allowed !important; pointer-events: none !important; }
+    .hidden { display: none; }
+    @media (max-width: 968px) { .cards-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="downloads-page">
+  <header class="header">
+    <nav class="nav">
+      <div class="nav-container">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="18" fill="url(#gradient1)"/>
+              <path d="M15 20L20 12L25 20L20 28L15 20Z" fill="white" opacity="0.9"/>
+              <defs>
+                <linearGradient id="gradient1" x1="0" y1="0" x2="40" y2="40">
+                  <stop offset="0%" stop-color="#A855F7"/>
+                  <stop offset="100%" stop-color="#6366F1"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span class="logo-text">FUSION</span>
+        </div>
+        <ul class="nav-menu">
+          <li><a href="index.html#home" class="nav-link">Início</a></li>
+          <li><a href="index.html#features" class="nav-link">Recursos</a></li>
+          <li><a href="index.html#about" class="nav-link">Sobre</a></li>
+          <li><a href="index.html#plans" class="nav-link">Planos</a></li>
+          <li><a href="index.html#support" class="nav-link">Suporte</a></li>
+          <li><a href="downloads.html" class="nav-link active">Baixar</a></li>
+        </ul>
+        <div class="nav-actions">
+          <button class="btn-profile" aria-label="Perfil">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+              <path d="M6 21C6 17 8.686 14 12 14C15.314 14 18 17 18 21" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+          <button class="btn-mobile-menu" aria-label="Menu"><span></span><span></span><span></span></button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <section class="downloads-header">
+    <div class="downloads-container">
+      <h1 class="downloads-title">Baixar</h1>
+      <p class="downloads-subtitle">Selecione o app e baixe nos seus dispositivos.</p>
+      <div style="margin-top: 1rem; color: #FFFFFF; font-weight: 700;">Selecione sua plataforma:</div>
+      <div class="segmented" id="platformSegmented" style="margin-top: .5rem;">
+        <button class="active" data-platform="windows"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="7" height="6" fill="#3B82F6"/><rect x="11" y="3" width="7" height="6" fill="#60A5FA"/><rect x="2" y="11" width="7" height="6" fill="#60A5FA"/><rect x="11" y="11" width="7" height="6" fill="#3B82F6"/></svg>Windows</button>
+        <button data-platform="macos"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M14 6c-1 1-1.5 2-1.5 3.2 0 2.2 2 3.3 2 3.3-.8 1.9-2.2 3.5-3.9 3.5-1 0-1.8-.7-2.4-.7s-1.4.7-2.3.7c-1.7 0-3.7-2-4.5-4.3-.9-2.6.2-5.7 2.2-6.8C4.4 4.4 5.6 5 6.5 5c.9 0 1.7-.6 2.4-.6.8 0 1.6.6 2.4.6.8 0 1.5-.3 2.2-.4z" fill="#FFFFFF"/><path d="M12.3 3.5c.5-.7 1.2-1.2 1.9-1.5-.1.8-.5 1.6-1.1 2.2-.5.6-1.2 1-1.9 1 .1-.8.5-1.4 1.1-1.7z" fill="#FFFFFF"/></svg>macOS</button>
+        <button data-platform="linux"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="7" r="3" fill="#111827"/><ellipse cx="10" cy="13" rx="4" ry="3" fill="#F59E0B"/><circle cx="9" cy="6.5" r="0.5" fill="#FFFFFF"/><circle cx="11" cy="6.5" r="0.5" fill="#FFFFFF"/></svg>Linux</button>
+        <button data-platform="android"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="6" width="12" height="8" rx="4" fill="#22C55E"/><circle cx="8" cy="10" r="1" fill="#FFFFFF"/><circle cx="12" cy="10" r="1" fill="#FFFFFF"/><line x1="6" y1="3" x2="8" y2="6" stroke="#22C55E" stroke-width="1.5"/><line x1="14" y1="3" x2="12" y2="6" stroke="#22C55E" stroke-width="1.5"/></svg>Android</button>
+        <button data-platform="ios"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M14 6c-1 1-1.5 2-1.5 3.2 0 2.2 2 3.3 2 3.3-.8 1.9-2.2 3.5-3.9 3.5-1 0-1.8-.7-2.4-.7s-1.4.7-2.3.7c-1.7 0-3.7-2-4.5-4.3-.9-2.6.2-5.7 2.2-6.8C4.4 4.4 5.6 5 6.5 5c.9 0 1.7-.6 2.4-.6.8 0 1.6.6 2.4.6.8 0 1.5-.3 2.2-.4z" fill="#FFFFFF"/><path d="M12.3 3.5c.5-.7 1.2-1.2 1.9-1.5-.1.8-.5 1.6-1.1 2.2-.5.6-1.2 1-1.9 1 .1-.8.5-1.4 1.1-1.7z" fill="#FFFFFF"/></svg>iOS</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="downloads-container">
+    <div class="cards-grid">
+      <div class="download-card" id="parsecCard">
+        <div class="card-header">
+          <div class="app-icon icon-parsec"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="8" width="16" height="10" rx="5" fill="#FFFFFF"/><circle cx="9" cy="13" r="1.5" fill="#0EA5E9"/><path d="M14 12h1.5v1.5H17v1.5h-1.5V17h-1.5v-1.5H12v-1.5h2z" fill="#22D3EE"/></svg></div>
+          <h3>Parsec</h3>
+        </div>
+        <p>Cliente oficial para streaming de jogos com baixa latência. Ideal para jogos competitivos e FiveM.</p>
+        <ul class="features">
+          <li>Baixa latência</li>
+          <li>Alta qualidade</li>
+          <li>Suporte a controle</li>
+        </ul>
+        <div class="availability" id="parsecAvail">Disponível para Windows</div>
+        <div class="actions">
+          <a class="btn-action btn-primary" id="parsecDownload" target="_blank" rel="noopener">Baixar para Windows</a>
+          <a class="btn-action btn-outline" href="https://support.parsec.app/" target="_blank" rel="noopener">Ver Tutorial</a>
+        </div>
+      </div>
+      <div class="download-card" id="moonlightCard">
+        <div class="card-header">
+          <div class="app-icon icon-moonlight"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4c-4.418 0-8 3.582-8 8 0 3.3 2 6.1 4.9 7.3-2.3-.9-3.9-3.1-3.9-5.6 0-3.6 2.9-6.5 6.5-6.5 2.5 0 4.7 1.5 5.6 3.9C16.1 6 13.3 4 10 4z" fill="#FFFFFF"/></svg></div>
+          <h3>Moonlight</h3>
+        </div>
+        <p>Cliente open-source para streaming de jogos. Excelente para dispositivos móveis e tablets.</p>
+        <ul class="features">
+          <li>Multiplataforma</li>
+          <li>Gratuito</li>
+          <li>Touch controls</li>
+        </ul>
+        <div class="availability" id="moonlightAvail">Disponível para Windows</div>
+        <div class="actions">
+          <a class="btn-action btn-primary" id="moonlightDownload" target="_blank" rel="noopener">Baixar para Windows</a>
+          <a class="btn-action btn-outline" href="https://moonlight-stream.org/" target="_blank" rel="noopener">Ver Tutorial</a>
+        </div>
+      </div>
+    </div>
+    <div class="download-card" id="zerotierCard" style="margin-top:2rem;">
+      <div class="card-header">
+        <div class="app-icon icon-zerotier"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" fill="#FFFFFF" opacity="0.85"/><circle cx="12" cy="12" r="4" fill="#FB7185"/></svg></div>
+        <h3>ZeroTier</h3>
+      </div>
+      <p>Rede virtual para conectar à sua máquina Fusion com segurança.</p>
+      <ul class="features">
+        <li>Conexão segura</li>
+        <li>Configuração simples</li>
+        <li>Multiplataforma</li>
+      </ul>
+      <div class="availability" id="zerotierAvail">Disponível para Windows</div>
+      <div class="actions">
+        <a class="btn-action btn-primary" id="zerotierDownload" target="_blank" rel="noopener">Baixar para Windows</a>
+        <a class="btn-action btn-outline" href="https://docs.zerotier.com/" target="_blank" rel="noopener">Ver Tutorial</a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const platformSegmented = document.getElementById('platformSegmented');
+      const platformTabs = platformSegmented.querySelectorAll('button');
+      const platformNames = { windows: 'Windows', macos: 'macOS', linux: 'Linux', android: 'Android', ios: 'iOS' };
+      const links = {
+        parsec: {
+          windows: 'https://parsec.app/downloads',
+          macos: 'https://parsec.app/downloads',
+          linux: 'https://parsec.app/downloads',
+          android: 'https://play.google.com/store/apps/details?id=tv.parsec.client',
+          ios: ''
+        },
+        moonlight: {
+          windows: 'https://github.com/moonlight-stream/moonlight-qt/releases',
+          macos: 'https://github.com/moonlight-stream/moonlight-qt/releases',
+          linux: 'https://github.com/moonlight-stream/moonlight-qt/releases',
+          android: 'https://play.google.com/store/apps/details?id=com.limelight',
+          ios: 'https://apps.apple.com/us/app/moonlight-game-streaming/id1000551566'
+        },
+        zerotier: {
+          windows: 'https://www.microsoft.com/store/productId/9P6PN9PZMW2P',
+          macos: 'https://www.zerotier.com/download/',
+          linux: 'https://www.zerotier.com/download/',
+          android: 'https://play.google.com/store/apps/details?id=com.zerotier.one',
+          ios: 'https://apps.apple.com/us/app/zerotier-one/id1444350865'
+        }
+      };
+      let platform = 'windows';
+      const update = () => {
+        const parsecAvailEl = document.getElementById('parsecAvail');
+        const parsecDownloadEl = document.getElementById('parsecDownload');
+        if (platform === 'ios') {
+          parsecAvailEl.textContent = 'Indisponível para iOS';
+          parsecAvailEl.classList.add('unavailable');
+          parsecDownloadEl.removeAttribute('href');
+          parsecDownloadEl.textContent = 'Indisponível';
+          parsecDownloadEl.classList.add('btn-disabled');
+          parsecDownloadEl.classList.remove('btn-primary');
+        } else {
+          parsecAvailEl.textContent = `Disponível para ${platformNames[platform]}`;
+          parsecAvailEl.classList.remove('unavailable');
+          parsecDownloadEl.href = links.parsec[platform];
+          parsecDownloadEl.textContent = `Baixar para ${platformNames[platform]}`;
+          parsecDownloadEl.classList.remove('btn-disabled');
+          parsecDownloadEl.classList.add('btn-primary');
+        }
+        document.getElementById('moonlightAvail').textContent = `Disponível para ${platformNames[platform]}`;
+        document.getElementById('zerotierAvail').textContent = `Disponível para ${platformNames[platform]}`;
+        const md = document.getElementById('moonlightDownload');
+        const zd = document.getElementById('zerotierDownload');
+        md.href = links.moonlight[platform];
+        zd.href = links.zerotier[platform];
+        md.textContent = `Baixar para ${platformNames[platform]}`;
+        zd.textContent = `Baixar para ${platformNames[platform]}`;
+      };
+      platformTabs.forEach(btn => btn.addEventListener('click', () => {
+        platformTabs.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        platform = btn.getAttribute('data-platform');
+        update();
+      }));
+      update();
+    });
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

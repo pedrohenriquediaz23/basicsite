@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Área do Cliente - Fusion Cloud Games</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page">
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="dashboard-header-content">
+            <div class="dashboard-logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                        <path d="M6 15c-2.2 0-4-1.7-4-3.8S3.8 7.4 6 7.4c.4-2.5 2.4-4.4 5-4.4 3.1 0 5.6 2.6 5.7 5.7 1.7.6 3 2.1 3 3.9 0 2.5-2 4.6-4.6 4.6H6z" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7.7 12.8c1.1-1.6 4.3-1.5 5.1-2.9.6-1.3-.5-2.4-2.1-2.4-1.2 0-2.2.5-3 1.2" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="logo-text">FUSION</span>
+            </div>
+            <div class="dashboard-user">
+                <span id="userName">Usuário</span>
+                <button class="btn-logout" id="logoutBtn">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar">
+            <nav class="dashboard-nav">
+                <a href="#tickets" class="nav-item active" data-section="tickets">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 4H18V16H2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 8H14M6 12H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Meus Tickets
+                </a>
+                <a href="#new-ticket" class="nav-item" data-section="new-ticket">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Novo Ticket
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Tickets List Section -->
+            <section class="dashboard-section active" id="ticketsSection">
+                <div class="section-header">
+                    <h1>Meus Tickets de Suporte</h1>
+                    <button class="btn-primary" onclick="showSection('new-ticket')">+ Novo Ticket</button>
+                </div>
+                
+                <div class="tickets-list" id="ticketsList">
+                    <!-- Tickets will be loaded here -->
+                </div>
+            </section>
+
+            <!-- New Ticket Section -->
+            <section class="dashboard-section" id="newTicketSection">
+                <div class="section-header">
+                    <h1>Criar Novo Ticket</h1>
+                    <button class="btn-secondary" onclick="showSection('tickets')">← Voltar</button>
+                </div>
+                
+                <form class="new-ticket-form" id="newTicketForm">
+                    <div class="form-group">
+                        <label for="ticketType">Motivo do Ticket*</label>
+                        <select id="ticketType" name="type" required>
+                            <option value="">Selecione o motivo</option>
+                            <option value="receber-plano-basico">Receber Plano Básico</option>
+                            <option value="receber-plano-ultra">Receber Plano Ultra</option>
+                            <option value="reembolso">Reembolso</option>
+                            <option value="duvidas">Dúvidas</option>
+                            <option value="relatar-problema">Relatar um Problema</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ticketSubject">Assunto*</label>
+                        <input type="text" id="ticketSubject" name="subject" required placeholder="Resumo do seu problema">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ticketImage">Anexo (Foto)</label>
+                        <input type="file" id="ticketImage" name="image" accept="image/*">
+                        <div class="image-preview" id="imagePreview"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ticketMessage">Mensagem*</label>
+                        <textarea id="ticketMessage" name="message" rows="6" required placeholder="Descreva seu problema ou dúvida..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Enviar Ticket</button>
+                </form>
+            </section>
+
+            <!-- Ticket Detail Section -->
+            <section class="dashboard-section" id="ticketDetailSection" style="display: none;">
+                <div class="section-header">
+                    <h1 id="ticketDetailTitle">Detalhes do Ticket</h1>
+                    <button class="btn-secondary" onclick="showSection('tickets')">← Voltar</button>
+                </div>
+                
+                <div class="ticket-detail" id="ticketDetail">
+                    <!-- Ticket details will be loaded here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Fusion Cloud Games</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page admin-page">
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="dashboard-header-content">
+            <div class="dashboard-logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                        <path d="M6 15c-2.2 0-4-1.7-4-3.8S3.8 7.4 6 7.4c.4-2.5 2.4-4.4 5-4.4 3.1 0 5.6 2.6 5.7 5.7 1.7.6 3 2.1 3 3.9 0 2.5-2 4.6-4.6 4.6H6z" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7.7 12.8c1.1-1.6 4.3-1.5 5.1-2.9.6-1.3-.5-2.4-2.1-2.4-1.2 0-2.2.5-3 1.2" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="logo-text">FUSION ADMIN</span>
+            </div>
+            <div class="dashboard-user">
+                <span id="adminName">Administrador</span>
+                <button class="btn-logout" id="logoutBtn">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar">
+            <nav class="dashboard-nav">
+                <a href="#tickets" class="nav-item active" data-section="tickets">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 4H18V16H2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 8H14M6 12H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Todos os Tickets
+                </a>
+                <a href="#tickets-ultra" class="nav-item" data-section="tickets-ultra">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 4H18V16H2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 8H14M6 12H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Tickets Ultra
+                </a>
+                <a href="#tickets-basic" class="nav-item" data-section="tickets-basic">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 4H18V16H2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 8H14M6 12H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Tickets Basic
+                </a>
+                <a href="#feedbacks-admin" class="nav-item" data-section="feedbacks-admin">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="M7 10H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M6 14C6.8 12.5 8.3 11.5 10 11.5C11.7 11.5 13.2 12.5 14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Feedbacks
+                </a>
+                <a href="#stats" class="nav-item" data-section="stats">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 17V7M7 17V3M11 17V11M15 17V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Estatísticas
+                </a>
+                <a href="#settings" class="nav-item" data-section="settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 4L11.2 6.4L13.9 6.7L12.1 8.5L12.6 11.2L10 9.9L7.4 11.2L7.9 8.5L6.1 6.7L8.8 6.4L10 4Z" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    Configurações
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Tickets List Section -->
+            <section class="dashboard-section active" id="ticketsSection">
+                <div class="section-header">
+                    <h1>Tickets de Suporte</h1>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="aberto">Abertos</button>
+                        <button class="filter-btn" data-filter="em-andamento">Em Andamento</button>
+                        <button class="filter-btn" data-filter="fechado">Fechados</button>
+                    </div>
+                </div>
+                
+                <div class="tickets-list" id="ticketsList">
+                    <!-- Tickets will be loaded here -->
+                </div>
+
+            </section>
+
+            <!-- Tickets Ultra Section -->
+            <section class="dashboard-section" id="ticketsUltraSection" style="display:none;">
+                <div class="section-header">
+                    <h1>Tickets Ultra</h1>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="aberto">Abertos</button>
+                        <button class="filter-btn" data-filter="em-andamento">Em Andamento</button>
+                        <button class="filter-btn" data-filter="fechado">Fechados</button>
+                    </div>
+                </div>
+                <div class="tickets-list" id="ticketsUltraList"></div>
+            </section>
+
+            <!-- Tickets Basic Section -->
+            <section class="dashboard-section" id="ticketsBasicSection" style="display:none;">
+                <div class="section-header">
+                    <h1>Tickets Basic</h1>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="aberto">Abertos</button>
+                        <button class="filter-btn" data-filter="em-andamento">Em Andamento</button>
+                        <button class="filter-btn" data-filter="fechado">Fechados</button>
+                    </div>
+                </div>
+                <div class="tickets-list" id="ticketsBasicList"></div>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="dashboard-section" id="statsSection">
+                <div class="section-header">
+                    <h1>Estatísticas</h1>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total de Tickets</h3>
+                        <p class="stat-number" id="totalTickets">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tickets Abertos</h3>
+                        <p class="stat-number" id="openTickets">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Em Andamento</h3>
+                        <p class="stat-number" id="inProgressTickets">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Fechados</h3>
+                        <p class="stat-number" id="closedTickets">0</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="dashboard-section" id="settingsSection" style="display:none;">
+                <div class="section-header">
+                    <h1>Configurações</h1>
+                </div>
+                <div class="settings-content" style="max-width:800px;display:flex;flex-direction:column;gap:1.25rem;">
+                    <div class="ticket-info-item" style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;">
+                        <span class="ticket-info-label">Plano Basic</span>
+                        <button class="btn-secondary" id="cfgBasicNone">Liberar</button>
+                        <button class="btn-secondary" id="cfgBasicMaint">Manutenção</button>
+                        <button class="btn-secondary" id="cfgBasicOut">Fora de estoque</button>
+                    </div>
+                    <div class="ticket-info-item" style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;">
+                        <span class="ticket-info-label">Plano Ultra</span>
+                        <button class="btn-secondary" id="cfgUltraNone">Liberar</button>
+                        <button class="btn-secondary" id="cfgUltraMaint">Manutenção</button>
+                        <button class="btn-secondary" id="cfgUltraOut">Fora de estoque</button>
+                    </div>
+                    <div class="ticket-info-item" style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;">
+                        <span class="ticket-info-label">Aplicar nos dois planos</span>
+                        <button class="btn-secondary" id="cfgBothNone">Liberar ambos</button>
+                        <button class="btn-secondary" id="cfgBothMaint">Manutenção nos dois</button>
+                        <button class="btn-secondary" id="cfgBothOut">Fora de estoque nos dois</button>
+                    </div>
+                    <div style="opacity:.75;">Alterações são salvas localmente e refletem na página de planos. Ao aplicar "Fora de estoque" o botão de assinatura é desativado e uma mensagem aparece no card.</div>
+                    <div class="ticket-info-item" style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;">
+                        <span class="ticket-info-label">Código de segurança do Admin</span>
+                        <input id="adminCodeInput" type="password" placeholder="Defina um código" style="padding:.5rem;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:rgba(255,255,255,0.05);color:var(--text-primary);" />
+                        <button class="btn-secondary" id="adminCodeSaveBtn">Salvar</button>
+                        <span id="adminCodeStatus" style="color:var(--text-secondary);"></span>
+                    </div>
+                    <div class="ticket-info-item" style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;">
+                        <span class="ticket-info-label">Migrar usuários (local)</span>
+                        <button class="btn-secondary" id="migrateUsersBtn">Migrar Agora</button>
+                        <span id="migrateUsersStatus" style="color:var(--text-secondary);"></span>
+                    </div>
+                    <div class="ticket-info-item" style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;">
+                        <span class="ticket-info-label">Testar API</span>
+                        <button class="btn-secondary" id="testApiBtn">Testar Saúde</button>
+                        <span id="testApiStatus" style="color:var(--text-secondary);"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Feedbacks Admin Section -->
+            <section class="dashboard-section" id="feedbacksAdminSection" style="display:none;">
+                <div class="section-header">
+                    <h1>Feedbacks dos Clientes</h1>
+                    <div class="filter-buttons" id="feedbacksFilterControl">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="basic">Basic</button>
+                        <button class="filter-btn" data-filter="ultra">Ultra</button>
+                    </div>
+                </div>
+                <div class="tickets-list" id="feedbacksAdminList"></div>
+            </section>
+
+            <!-- Ticket Detail Section -->
+            <section class="dashboard-section" id="ticketDetailSection" style="display: none;">
+                <div class="section-header">
+                    <h1 id="ticketDetailTitle">Responder Ticket</h1>
+                    <button class="btn-secondary" onclick="showSection('tickets')">← Voltar</button>
+                </div>
+                
+                <div class="ticket-detail" id="ticketDetail">
+                    <!-- Ticket details will be loaded here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
+
