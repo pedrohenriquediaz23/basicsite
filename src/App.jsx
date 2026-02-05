@@ -12,6 +12,8 @@ import CheckoutUltra from './pages/CheckoutUltra';
 import { AuthProvider } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import DashboardProfile from './pages/DashboardProfile';
 import DashboardInvoices from './pages/DashboardInvoices';
@@ -99,6 +101,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/profile" element={<DashboardProfile />} />
             <Route path="/dashboard/invoices" element={<DashboardInvoices />} />

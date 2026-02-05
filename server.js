@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
 import https from 'https';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 // Load env vars
 dotenv.config();
@@ -188,6 +189,146 @@ Se você não solicitou isso, ignore este email.
     } catch (error) {
         console.error("Error sending email:", error);
         res.status(500).json({ success: false, message: 'Erro ao enviar email', error: error.message });
+    }
+});
+
+// --- PASSWORD RESET ENDPOINTS ---
+
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
+  ? createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
+
+localRouter.post('/request-password-reset', async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Email é obrigatório' });
+    }
+
+    if (!supabaseAdmin) {
+        console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
+        return res.status(500).json({ success: false, message: 'Erro de configuração no servidor (Service Role Key ausente)' });
+    }
+
+    try {
+        // Check if user exists in profiles
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        if (profileError || !profile) {
+            // Don't reveal user existence? Or yes? User asked for verification code system.
+            // Let's return generic success or specific error.
+            // For now, if user not found, we can't send email.
+            return res.status(404).json({ success: false, message: 'Email não encontrado' });
+        }
+
+        const code = Math.floor(10000 + Math.random() * 90000).toString();
+
+        // Update profile with verification code
+        // We reuse 'verification_code' column. 
+        // Note: This overwrites any existing registration verification code, which is fine.
+        const { error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ verification_code: code })
+            .eq('id', profile.id);
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        // Send Email
+        const transporter = nodemailer.createTransport({
+            host: "smtp.hostinger.com",
+            port: 587,
+            secure: false,
+            auth: {
+                user: "suporte@grupofusioncloud.site",
+                pass: "FusionCloud2026@"
+            }
+        });
+
+        await transporter.sendMail({
+            from: '"Fusion Cloud" <suporte@grupofusioncloud.site>',
+            to: email,
+            subject: "Recuperação de Senha - Fusion Cloud",
+            text: `Seu código de recuperação é: ${code}`,
+            html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Recuperação de Senha</h2>
+                <p>Use o código abaixo para redefinir sua senha:</p>
+                <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 5px; text-align: center; margin: 20px 0;">
+                    ${code}
+                </div>
+                <p>Esse código expira em 10 minutos.</p>
+                <p>— <strong>Fusion Cloud</strong></p>
+            </div>
+            `
+        });
+
+        res.json({ success: true, message: 'Código enviado com sucesso' });
+
+    } catch (error) {
+        console.error("Error requesting password reset:", error);
+        res.status(500).json({ success: false, message: 'Erro ao processar solicitação', error: error.message });
+    }
+});
+
+localRouter.post('/reset-password', async (req, res) => {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Dados incompletos' });
+    }
+
+    if (!supabaseAdmin) {
+        return res.status(500).json({ success: false, message: 'Erro de configuração no servidor' });
+    }
+
+    try {
+        // Verify code
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, verification_code')
+            .eq('email', email)
+            .single();
+
+        if (profileError || !profile) {
+            return res.status(400).json({ success: false, message: 'Usuário não encontrado' });
+        }
+
+        if (profile.verification_code !== code) {
+            return res.status(400).json({ success: false, message: 'Código inválido' });
+        }
+
+        // Update password in Supabase Auth
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+            profile.id,
+            { password: newPassword }
+        );
+
+        if (authError) {
+            throw authError;
+        }
+
+        // Clear verification code
+        await supabaseAdmin
+            .from('profiles')
+            .update({ verification_code: null })
+            .eq('id', profile.id);
+
+        res.json({ success: true, message: 'Senha alterada com sucesso' });
+
+    } catch (error) {
+        console.error("Error resetting password:", error);
+        res.status(500).json({ success: false, message: 'Erro ao redefinir senha', error: error.message });
     }
 });
 

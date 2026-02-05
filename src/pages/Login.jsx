@@ -98,6 +98,11 @@ const Login = () => {
                         placeholder="••••••••"
                         required
                     />
+                    <div className="text-right mt-2">
+                        <Link to="/reset-password" className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                            Esqueci minha senha
+                        </Link>
+                    </div>
                 </div>
 
                 <button 
