@@ -41,7 +41,7 @@ const Docs = () => {
                 <iframe 
                     width="100%" 
                     height="100%" 
-                    src="https://www.youtube.com/embed/IkjfA52_sKs" 
+                    src="https://www.youtube-nocookie.com/embed/IkjfA52_sKs" 
                     title="Tutorial GTA RP" 
                     frameBorder="0" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
