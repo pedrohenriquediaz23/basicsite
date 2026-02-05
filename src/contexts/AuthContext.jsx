@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
+import { supabase } from '../supabase';
 
 const AuthContext = createContext();
 
@@ -9,205 +10,116 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper to format user object
+  const formatUser = (sessionUser) => {
+    if (!sessionUser) return null;
+    
+    // Check admin status via metadata or env var
+    const isAdmin = 
+      sessionUser.user_metadata?.isAdmin === true || 
+      sessionUser.email === import.meta.env.VITE_ADMIN_EMAIL;
+
+    return {
+      ...sessionUser,
+      ...sessionUser.user_metadata, // Flatten metadata (name, phone, etc.)
+      isAdmin
+    };
+  };
+
   useEffect(() => {
-    try {
-      // Check local storage for user
-      const storedUser = localStorage.getItem('fusion_user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.error('Error parsing stored user:', e);
-          localStorage.removeItem('fusion_user');
-        }
-      }
-
-      // Seed Admin User if not exists
-      let storedUsers = [];
-      try {
-        storedUsers = JSON.parse(localStorage.getItem('fusion_users') || '[]');
-      } catch (e) {
-        console.error('Error parsing stored users:', e);
-        localStorage.removeItem('fusion_users');
-        storedUsers = [];
-      }
-
-      if (!Array.isArray(storedUsers)) storedUsers = [];
-
-      // REMOVE LEGACY ADMIN IF EXISTS (Cleanup)
-      const legacyAdminIndex = storedUsers.findIndex(u => u.email === 'admin@fusion.com');
-      if (legacyAdminIndex !== -1) {
-          console.log('Removendo usuário admin legado (cleanup)...');
-          storedUsers.splice(legacyAdminIndex, 1);
-          localStorage.setItem('fusion_users', JSON.stringify(storedUsers));
-      }
-
-      // Legacy admin seed removed in favor of Server-Side Env Var Auth
-      /*
-      if (!storedUsers.some(u => u.email === 'admin@fusion.com')) {
-          const adminUser = {
-              id: 'admin-001',
-              name: 'Administrador',
-              email: 'admin@fusion.com',
-              password: 'admin', // In real app, this should be hashed
-              isAdmin: true,
-              phone: '00000000000',
-              cpf: '000.000.000-00'
-          };
-          storedUsers.push(adminUser);
-          localStorage.setItem('fusion_users', JSON.stringify(storedUsers));
-      }
-      */
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-    } finally {
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(formatUser(session?.user));
       setLoading(false);
-    }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(formatUser(session?.user));
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
-    // 1. Tenta login no Backend (Prioridade para Admin e Auth real)
     try {
-      console.log(`Tentando login no backend: /api/auth/login`);
-      const response = await fetch(`/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      // Se o backend responder (mesmo com erro 401/400), processamos
-      if (response.ok) {
-          const data = await response.json();
-          if (data.ok || data.token || data.user) {
-              const userData = data.user || data;
-              setUser(userData);
-              localStorage.setItem('fusion_user', JSON.stringify(userData));
-              return userData;
-          }
+      if (error) throw error;
+
+      // Force insert into profiles table to ensure it exists immediately
+      if (data.user) {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          username: name,
+          phone: phone,
+          cpf: cpf,
+          is_admin: email === import.meta.env.VITE_ADMIN_EMAIL,
+          password: password // Saving password as requested
+        });
       }
+
+      return formatUser(data.user);
     } catch (error) {
-      console.warn('Backend login falhou ou offline, tentando mock local...', error);
-    }
-
-    // 2. Fallback para Mock Local (apenas se backend falhar ou não encontrar usuário)
-    try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const storedUsers = JSON.parse(localStorage.getItem('fusion_users') || '[]');
-      const user = storedUsers.find(u => u.email === email);
-
-      if (user && user.password === password) {
-        // Create a safe user object without password to store in session
-        const userSession = { ...user };
-        delete userSession.password;
-        
-        setUser(userSession);
-        localStorage.setItem('fusion_user', JSON.stringify(userSession));
-        return userSession;
-      } else {
-        throw new Error('Email ou senha inválidos');
-      }
-    } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('Erro no login:', error.message);
       throw error;
     }
   };
 
   const register = async (name, email, password, phone, cpf) => {
-    // MOCK AUTHENTICATION IMPLEMENTATION
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const storedUsers = JSON.parse(localStorage.getItem('fusion_users') || '[]');
-      
-      if (storedUsers.some(u => u.email === email)) {
-        throw new Error('Usuário já existe');
-      }
-
-      const newUser = {
-        _id: Date.now().toString(),
-        name,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        password, // In a real app, never store passwords plainly!
-        phone,
-        cpf,
-        isAdmin: false,
-        token: 'mock-jwt-token-' + Date.now()
-      };
-
-      // Add to "database"
-      storedUsers.push(newUser);
-      localStorage.setItem('fusion_users', JSON.stringify(storedUsers));
-
-      // Auto login
-      const userSession = { ...newUser };
-      delete userSession.password;
-      
-      setUser(userSession);
-      localStorage.setItem('fusion_user', JSON.stringify(userSession));
-      
-      return userSession;
-    } catch (error) {
-      console.error('Erro no registro (Mock):', error);
-      throw error;
-    }
-
-    /* REAL BACKEND IMPLEMENTATION (DISABLED)
-    try {
-      console.log(`Tentando registro em: ${API_URL}`);
-      const response = await fetch(`${API_URL}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        password,
+        options: {
+          data: {
+            name,
+            phone,
+            cpf,
+            // WARNING: Storing password in metadata is insecure, but requested by user
+            password, 
+            // Set initial admin status based on email
+            isAdmin: email === import.meta.env.VITE_ADMIN_EMAIL
+          },
         },
-        body: JSON.stringify({ name, email, password, phone, cpf }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Falha ao registrar');
-      }
-
-      // Auto login after register
-      setUser(data);
-      localStorage.setItem('fusion_user', JSON.stringify(data));
-      
-      return data;
+      if (error) throw error;
+      return formatUser(data.user);
     } catch (error) {
-      console.error('Erro no registro:', error);
-      if (error.message === 'Failed to fetch') {
-        throw new Error('Não foi possível conectar ao servidor. Verifique se o backend está online e a URL está correta.');
-      }
+      console.error('Erro no registro:', error.message);
       throw error;
     }
-    */
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('fusion_user');
-    // Clear other sensitive data
-    localStorage.removeItem('fusion_invoices');
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+      localStorage.removeItem('fusion_user'); // Clean up legacy
+      localStorage.removeItem('fusion_users'); // Clean up legacy
+    } catch (error) {
+      console.error('Erro ao sair:', error.message);
+    }
   };
 
   const updateProfile = async (updatedData) => {
-    // TODO: Implement update endpoint in backend
-    // For now, update local state only
-    const updatedUser = { 
-        ...user, 
-        ...updatedData,
-        updatedAt: new Date().toISOString() 
-    };
-    
-    setUser(updatedUser);
-    localStorage.setItem('fusion_user', JSON.stringify(updatedUser));
-    
-    return updatedUser;
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: updatedData
+      });
+      
+      if (error) throw error;
+      setUser(formatUser(data.user));
+      return data.user;
+    } catch (error) {
+      console.error("Error updating profile:", error.message);
+      throw error;
+    }
   };
 
   const value = {
