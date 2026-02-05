@@ -239,9 +239,12 @@ localRouter.post('/send-verification-code', async (req, res) => {
             tls: {
                 rejectUnauthorized: false
             },
-            connectionTimeout: 20000,
-            greetingTimeout: 20000,
-            socketTimeout: 20000
+            connectionTimeout: 30000, // Increased to 30s
+            greetingTimeout: 30000,
+            socketTimeout: 30000,
+            family: 4, // Force IPv4 to avoid IPv6 issues on Railway
+            logger: true, // Enable logging
+            debug: true // Enable debug output
         });
 
         const info = await transporter.sendMail({
