@@ -1,7 +1,8 @@
 // Documentation: https://nebulagg.com/docs
 
 const BASE_URL = '';
-const API_KEY = import.meta.env.VITE_NEBULA_API_KEY || 'sua-api-key-aqui'; // Configure no .env
+// Remove direct API Key usage - Proxy handles it
+const API_KEY = ''; 
 
 // Set this to false when you are ready to use the real API
 const USE_MOCK_API = false;
@@ -10,8 +11,8 @@ const callAPI = async (endpoint, method = 'POST', body = null) => {
     const options = {
         method,
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`
+            'Content-Type': 'application/json'
+            // Authorization header removed as it is injected by the server proxy
         }
     };
     if (body && method !== 'GET') {
@@ -160,16 +161,19 @@ const normalizeVmPowerStatus = (rawStatus) => {
 };
 
 export const nebulaService = {
-  getStatus: async (diskName) => {
+  getStatus: async (diskName, planType = 'basic') => {
       if (USE_MOCK_API) {
           return { status: 'offline' };
       }
       const attempts = 2;
       let lastError = null;
 
+      // Determine endpoint based on planType
+      const endpoint = planType === 'ultra' ? '/api/ultra/legacy/gcp/status' : '/api/basic/legacy/gcp/status';
+
       for (let i = 0; i < attempts; i++) {
           try {
-              const response = await callAPI('/api/legacy/gcp/status', 'POST', { diskName });
+              const response = await callAPI(endpoint, 'POST', { diskName });
 
               if (response && response.hasVM === false) {
                   setCachedStatus(diskName, 'offline');
@@ -338,7 +342,7 @@ export const nebulaService = {
   },
 
   // Start a VM
-  start: async (diskName) => {
+  start: async (diskName, planType = 'basic') => {
     if (USE_MOCK_API) {
         await delay(1000);
         updateStoredVM(diskName, { status: 'online' });
@@ -346,13 +350,14 @@ export const nebulaService = {
     }
     
     // Mapped to /api/legacy/gcp/start per docs
-    const res = await callAPI('/api/legacy/gcp/start', 'POST', { diskName });
+    const endpoint = planType === 'ultra' ? '/api/ultra/legacy/gcp/start' : '/api/basic/legacy/gcp/start';
+    const res = await callAPI(endpoint, 'POST', { diskName });
     setCachedStatus(diskName, 'online');
     return res;
   },
 
   // Stop a VM
-  stop: async (diskName) => {
+  stop: async (diskName, planType = 'basic') => {
     if (USE_MOCK_API) {
         await delay(1000);
         updateStoredVM(diskName, { status: 'offline' });
@@ -363,13 +368,14 @@ export const nebulaService = {
     // Assuming /api/legacy/gcp/stop exists based on start pattern, 
     // or maybe we should just not implement if unsure.
     // Let's assume standard pattern for now.
-    const res = await callAPI('/api/legacy/gcp/stop', 'POST', { diskName });
+    const endpoint = planType === 'ultra' ? '/api/ultra/legacy/gcp/stop' : '/api/basic/legacy/gcp/stop';
+    const res = await callAPI(endpoint, 'POST', { diskName });
     setCachedStatus(diskName, 'offline');
     return res;
   },
 
   // Restart a VM
-  restart: async (diskName) => {
+  restart: async (diskName, planType = 'basic') => {
     if (USE_MOCK_API) {
         await delay(1500);
         updateStoredVM(diskName, { status: 'offline' });
@@ -378,15 +384,17 @@ export const nebulaService = {
         return { status: 'success', message: 'VM reiniciada com sucesso' };
     }
 
-    const res = await callAPI('/api/legacy/gcp/restart', 'POST', { diskName });
+    const endpoint = planType === 'ultra' ? '/api/ultra/legacy/gcp/restart' : '/api/basic/legacy/gcp/restart';
+    const res = await callAPI(endpoint, 'POST', { diskName });
     setCachedStatus(diskName, 'online');
     return res;
   },
   
   // Connect (Get Connection Info/Pin)
-  connect: async (diskName, pin) => {
+  connect: async (diskName, pin, planType = 'basic') => {
       // Replaces pairDevice logic?
-      return await callAPI('/api/legacy/gcp/connect', 'POST', { diskName, pin });
+      const endpoint = planType === 'ultra' ? '/api/ultra/legacy/gcp/connect' : '/api/basic/legacy/gcp/connect';
+      return await callAPI(endpoint, 'POST', { diskName, pin });
   },
   
   // ... other methods might need to remain mock or be adapted ...
@@ -412,18 +420,19 @@ export const nebulaService = {
       return data;
   },
 
-  format: async () => {
+  format: async (diskId, planType = 'basic') => {
        // Dangerous op, likely not exposed easily
        await delay(2000);
        return { status: 'success', message: 'Disco formatado' };
   },
   
-  pairDevice: async (diskName, pin) => {
+  pairDevice: async (diskName, pin, planType = 'basic') => {
       if (USE_MOCK_API) {
         await delay(1000);
         return { status: 'success', message: 'Dispositivo pareado'};
       }
       // Using the 'connect' endpoint from docs which seems to match 'pair' intent (pin)
-      return await callAPI('/api/legacy/gcp/connect', 'POST', { diskName, pin });
+      const endpoint = planType === 'ultra' ? '/api/ultra/legacy/gcp/connect' : '/api/basic/legacy/gcp/connect';
+      return await callAPI(endpoint, 'POST', { diskName, pin });
   }
 };

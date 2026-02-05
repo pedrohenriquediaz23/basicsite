@@ -335,7 +335,7 @@ app.use('/api/basic', createProxyMiddleware({
     secure: true,
     pathRewrite: { '^/api/basic': '' },
     onProxyReq: (proxyReq, req, res) => {
-        const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
+        const apiKey = process.env.NEBULA_API_KEY_BASIC;
         if (apiKey) {
             proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
         }
@@ -376,14 +376,14 @@ app.use('/api/ultra', createProxyMiddleware({
     }
 }));
 
-// Fallback / Legacy Proxy (uses default VITE_NEBULA_API_KEY)
+// Fallback / Legacy Proxy (uses default NEBULA_API_KEY_BASIC)
 app.use('/api', createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
     onProxyReq: (proxyReq, req, res) => {
         // Inject API Key from server environment if available
-        const apiKey = process.env.VITE_NEBULA_API_KEY || process.env.NEBULA_API_KEY;
+        const apiKey = process.env.NEBULA_API_KEY_BASIC;
         if (apiKey) {
             proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
         }

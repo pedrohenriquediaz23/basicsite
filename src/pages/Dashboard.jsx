@@ -351,7 +351,7 @@ const Dashboard = () => {
         const diskName = vm?.name;
         if (!diskName) return null;
         if (vm?.status === 'expired') return null;
-        const statusRes = await nebulaService.getStatus(diskName);
+        const statusRes = await nebulaService.getStatus(diskName, vm?.planType);
         if (!statusRes?.status) return null;
         return { id: vm?.id, status: statusRes.status };
       })
@@ -415,7 +415,7 @@ const Dashboard = () => {
         if (action === 'start') {
             newVms[vmIndex].status = 'starting'; // Temporary state
             setVms(newVms);
-            await nebulaService.start(vm?.name);
+            await nebulaService.start(vm?.name, vm?.planType);
             newVms[vmIndex].status = 'online';
             // Mock adding connection info
             newVms[vmIndex].connection = {
@@ -426,20 +426,20 @@ const Dashboard = () => {
         } else if (action === 'stop') {
             newVms[vmIndex].status = 'stopping';
             setVms(newVms);
-            await nebulaService.stop(vm?.name);
+            await nebulaService.stop(vm?.name, vm?.planType);
             newVms[vmIndex].status = 'offline';
             newVms[vmIndex].connection = null;
         } else if (action === 'restart') {
-            await nebulaService.restart(vm?.name);
+            await nebulaService.restart(vm?.name, vm?.planType);
         } else if (action === 'format') {
             if (confirm('Tem certeza que deseja formatar este disco? Todos os dados serão perdidos.')) {
-                await nebulaService.format(vm?.id);
+                await nebulaService.format(vm?.id, vm?.planType);
                 alert('Disco formatado com sucesso.');
             }
         } else if (action === 'pair') {
             const pin = prompt('Digite o PIN do dispositivo:');
             if (pin) {
-                await nebulaService.pairDevice(vm?.name, pin);
+                await nebulaService.pairDevice(vm?.name, pin, vm?.planType);
                 alert('Dispositivo pareado com sucesso.');
             }
         } else if (action === 'generate-token') {
