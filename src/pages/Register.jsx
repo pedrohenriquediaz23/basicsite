@@ -61,8 +61,37 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await register(name, email, password, phone, cpf);
-      navigate('/');
+      // Generate 5-digit code
+      const code = Math.floor(10000 + Math.random() * 90000).toString();
+
+      // Register with code (updates profiles table)
+      await register(name, email, password, phone, cpf, code);
+
+      // Send email via backend
+      // Use full URL if possible or relative if proxy is working. Proxy is /api, so relative is fine.
+      // But we are on frontend (port 5173) calling backend (port 3000).
+      // Vite proxy is configured for /api -> http://localhost:3000/api
+      // Wait, server.js has `/api` prefix for localRouter? Yes.
+      // And server.js runs on 3000.
+      // If we use `/api/send-verification-code`, Vite should proxy it.
+      
+      const response = await fetch('/api/send-verification-code', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, code })
+      });
+
+      if (!response.ok) {
+          const data = await response.json();
+          // Even if email fails, user is registered. Redirect to verify anyway so they can resend?
+          // Or show error?
+          console.error('Failed to send email:', data);
+          // Proceeding to verify page anyway
+      }
+
+      navigate('/verify-email');
     } catch (err) {
       setError(err.message || 'Falha ao criar conta');
     } finally {
@@ -98,7 +127,7 @@ const Register = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nome</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nome Completo</label>
                     <input 
                         type="text" 
                         value={name}
@@ -129,7 +158,7 @@ const Register = () => {
                             value={phone}
                             onChange={handlePhoneChange}
                             className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
-                            placeholder="(11) 99999-9999"
+                            placeholder="(00) 00000-0000"
                             required
                         />
                     </div>
@@ -158,7 +187,7 @@ const Register = () => {
                     />
                 </div>
 
-                 <div>
+                <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Confirmar Senha</label>
                     <input 
                         type="password" 

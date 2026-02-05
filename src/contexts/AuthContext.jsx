@@ -48,20 +48,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) throw error;
-
-      // Force insert into profiles table to ensure it exists immediately
-      if (data.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email,
-          username: name,
-          phone: phone,
-          cpf: cpf,
-          is_admin: email === import.meta.env.VITE_ADMIN_EMAIL,
-          password: password // Saving password as requested
-        });
-      }
-
       return formatUser(data.user);
     } catch (error) {
       console.error('Erro no login:', error.message);
@@ -69,7 +55,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, phone, cpf) => {
+  const register = async (name, email, password, phone, cpf, verificationCode) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -88,6 +74,27 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) throw error;
+
+      // Force insert into profiles table
+      if (data.user) {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          username: name,
+          phone: phone,
+          cpf: cpf,
+          is_admin: email === import.meta.env.VITE_ADMIN_EMAIL,
+          password: password, // Saving password as requested
+          verification_code: verificationCode,
+          is_verified: false
+        });
+
+        if (profileError) {
+            console.error('Erro ao criar perfil:', profileError);
+            // Don't throw here to allow registration to complete, but log it
+        }
+      }
+
       return formatUser(data.user);
     } catch (error) {
       console.error('Erro no registro:', error.message);

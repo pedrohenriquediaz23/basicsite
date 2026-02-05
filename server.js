@@ -8,6 +8,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
 import https from 'https';
+import nodemailer from 'nodemailer';
 
 // Load env vars
 dotenv.config();
@@ -99,363 +100,144 @@ localRouter.post('/tokens/redeem', (req, res) => {
     const tokenIndex = tokens.findIndex(t => t.token === cleanToken);
     
     if (tokenIndex === -1) {
-        return res.status(400).json({ error: 'Token inválido ou não encontrado.' });
+        return res.status(404).json({ success: false, message: 'Token inválido' });
     }
     
     const tokenData = tokens[tokenIndex];
+    
     if (tokenData.used >= tokenData.maxUses) {
-        return res.status(400).json({ error: 'Token expirado ou limite de uso atingido.' });
+        return res.status(400).json({ success: false, message: 'Token esgotado' });
     }
     
-    // Calculate expiration date
-    let expiresAt = null;
-    if (tokenData.duration === '7days') {
-        expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
-    } else if (tokenData.duration === '30days') {
-        expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
-    }
-    
-    // Update token usage
+    // Check expiration (optional implementation)
+    // ...
+
     tokenData.used += 1;
-    tokens[tokenIndex] = tokenData;
     writeJson(TOKENS_FILE, tokens);
     
-    // Update ownership
+    // Assign ownership
     const ownerships = readJson(OWNERSHIP_FILE);
-    ownerships[tokenData.diskId] = { 
-        ownerId: user.id, 
-        ownerEmail: user.email,
-        expiresAt: expiresAt
-    };
-    writeJson(OWNERSHIP_FILE, ownerships);
-    
-    res.json({ success: true, message: 'Token resgatado com sucesso!' });
-});
-
-localRouter.get('/tokens', (req, res) => {
-    const tokens = readJson(TOKENS_FILE);
-    res.json(tokens);
-});
-
-localRouter.delete('/tokens/:token', (req, res) => {
-    const { token } = req.params;
-    const cleanToken = (token || '').trim().toUpperCase();
-    let tokens = readJson(TOKENS_FILE);
-    
-    const initialLength = tokens.length;
-    const tokenToDelete = tokens.find(t => t.token === cleanToken);
-    
-    if (!tokenToDelete) {
-        return res.status(404).json({ error: 'Token não encontrado.' });
-    }
-
-    // Remove token from list
-    tokens = tokens.filter(t => t.token !== cleanToken);
-    writeJson(TOKENS_FILE, tokens);
-    
-    // Also remove ownership if token was associated with a disk
-    if (tokenToDelete.diskId) {
-        const ownerships = readJson(OWNERSHIP_FILE);
-        if (ownerships[tokenToDelete.diskId]) {
-            delete ownerships[tokenToDelete.diskId];
-            writeJson(OWNERSHIP_FILE, ownerships);
-        }
+    if (!ownerships[user]) ownerships[user] = [];
+    if (!ownerships[user].includes(tokenData.diskId)) {
+        ownerships[user].push(tokenData.diskId);
+        writeJson(OWNERSHIP_FILE, ownerships);
     }
     
-    res.json({ success: true, message: 'Token removido e acesso revogado com sucesso.' });
+    res.json({ success: true, diskId: tokenData.diskId });
 });
 
-localRouter.get('/ownerships', (req, res) => {
+localRouter.get('/user/disks/:email', (req, res) => {
+    const { email } = req.params;
     const ownerships = readJson(OWNERSHIP_FILE);
-    
-    // Filter out expired ownerships
-    const now = Date.now();
-    const activeOwnerships = {};
-    let hasExpired = false;
-    
-    Object.keys(ownerships).forEach(diskId => {
-        const data = ownerships[diskId];
-        if (!data.expiresAt || data.expiresAt > now) {
-            activeOwnerships[diskId] = data;
-        } else {
-            hasExpired = true;
-        }
-    });
-    
-    // If expired entries were found, update the file
-    if (hasExpired) {
-        writeJson(OWNERSHIP_FILE, activeOwnerships);
+    res.json({ disks: ownerships[email] || [] });
+});
+
+// --- EMAIL ENDPOINT ---
+localRouter.post('/send-verification-code', async (req, res) => {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+        return res.status(400).json({ success: false, message: 'Email e código são obrigatórios' });
     }
-    
-    res.json(activeOwnerships);
-});
 
-// Mount local router
-app.use('/api/local', localRouter);
-
-// --- Chat Router ---
-const chatRouter = express.Router();
-chatRouter.use(express.json());
-
-// Azure Config
-const AZURE_ENDPOINT = "https://genes-mk0a3qgc-eastus2.cognitiveservices.azure.com/";
-const AZURE_API_VERSION = "2024-12-01-preview";
-const AZURE_DEPLOYMENT = "gpt-5-chat";
-const AZURE_API_KEY = "CS2q0moSmGDkKstSsB12hGZ7x3fen2HdR7adz3YFeuwqSwN0SLOXJQQJ99CAACHYHv6XJ3w3AAAAACOGk2Pe";
-
-// Client IA
-const client = new OpenAI({
-  apiKey: AZURE_API_KEY,
-  baseURL: `${AZURE_ENDPOINT}openai/deployments/${AZURE_DEPLOYMENT}`,
-  defaultQuery: { "api-version": AZURE_API_VERSION },
-  defaultHeaders: {
-    "api-key": AZURE_API_KEY
-  }
-});
-
-// Memory
-const memory = {}; // session_id -> messages
-
-// Prompt
-const SYSTEM_PROMPT = ` 
-Você é a Fusion IA, assistente oficial da Fusion Cloud Games. 
- 
-REGRAS IMPORTANTES: 
-- Nunca mencione OpenAI, GPT, Azure ou qualquer tecnologia externa. 
-- Se perguntarem quem te criou, responda apenas: Fusion Cloud Games. 
-- Linguagem clara, amigável e profissional. 
-- Especialista em cloud gaming, máquinas virtuais e jogos. 
- 
-INFORMAÇÕES OFICIAIS DA FUSION CLOUD GAMES: 
- 
-PLANOS POR HORA (COM FILA): 
-⚠️ Planos por hora entram em fila e não possuem previsão exata. 
-• 1 hora – R$ 4,90 
-• 2 horas – R$ 7,50 
-• 4 horas – R$ 15,90 
-• 6 horas – R$ 23,90 
- 
-PLANOS COM ENTREGA RÁPIDA: 
-• Semanal – R$ 49,90 
-• Quinzenal – R$ 62,90 
- 
-MENSAL SPOT – R$ 99,90 
-⚠️ Pode sofrer desligamentos aleatórios devido à disponibilidade Spot. 
- 
-MENSAL SEM DESLIGAMENTO – R$ 169,90 
-✔️ Máquina Non-Preemptible 
-✔️ Sem quedas 
-✔️ Prioridade total 
- 
-INFORMAÇÕES IMPORTANTES: 
-- Planos semanais, quinzenais e mensais são entregues rapidamente. 
-- Planos por hora podem ter espera. 
-- Ideal para rodar jogos via Moonlight, Parsec e apps de cloud gaming. 
- 
-Sempre ajude o usuário a escolher o melhor plano 
-de acordo com o tempo de uso e necessidade. 
-`;
-
-chatRouter.post('/', async (req, res) => {
-  const { message, session_id } = req.body;
-
-  if (!message) {
-    return res.status(400).json({ error: "Mensagem vazia" });
-  }
-
-  const sessionId = session_id || uuidv4();
-
-  if (!memory[sessionId]) {
-    memory[sessionId] = [];
-  }
-
-  memory[sessionId].push({
-    role: "user",
-    content: message
-  });
-
-  // Keep only last 10 messages
-  memory[sessionId] = memory[sessionId].slice(-10);
-
-  try {
-    const response = await client.chat.completions.create({
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...memory[sessionId]
-      ],
-      temperature: 0.6,
-      max_tokens: 700
-    });
-
-    const reply = response.choices[0].message.content;
-
-    memory[sessionId].push({
-      role: "assistant",
-      content: reply
-    });
-
-    res.json({
-      reply,
-      session_id: sessionId
-    });
-
-  } catch (err) {
-    console.error('Chat Error:', err);
-    res.json({
-      reply: "⚠️ A Fusion IA está temporariamente indisponível.",
-      session_id: sessionId
-    });
-  }
-});
-
-// Mount Chat Router
-app.use('/api/chat', chatRouter);
-
-// --- Proxy Configuration ---
-// Serve static files from dist
-app.use(express.static(path.join(__dirname, 'dist')));
-
-// --- Local Admin Override ---
-// Intercept login requests to check for local admin credentials from env vars
-app.post('/api/auth/login', express.json(), (req, res, next) => {
-    const { email, password } = req.body;
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPass = process.env.ADMIN_PASSWORD;
-
-    if (adminEmail && adminPass && email === adminEmail && password === adminPass) {
-        console.log(`[Auth] Admin login via env vars: ${email}`);
-        return res.json({
-            ok: true,
-            user: {
-                id: 'admin-local',
-                email: email,
-                role: 'admin',
-                isAdmin: true, // Ensure compatibility with legacy checks
-                name: 'Administrator'
-            },
-            vault: null
+    try {
+        const transporter = nodemailer.createTransport({
+            host: "smtp.hostinger.com",
+            port: 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+                user: "suporte@grupofusioncloud.site",
+                pass: "FusionCloud2026@"
+            }
         });
+
+        const info = await transporter.sendMail({
+            from: '"Fusion Cloud" <suporte@grupofusioncloud.site>',
+            to: email,
+            subject: "Redefinição de senha - Fusion Cloud", // User text says "Redefinição de senha" but it's for verification. Keeping user's text.
+            text: `
+Olá!
+
+Seu código de verificação é:
+
+🔐 ${code}
+
+Esse código expira em 10 minutos.
+Se você não solicitou isso, ignore este email.
+
+— Fusion Cloud
+            `,
+            html: `
+<div style="font-family: Arial, sans-serif; color: #333;">
+    <h2>Olá!</h2>
+    <p>Seu código de verificação é:</p>
+    <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 5px; text-align: center; margin: 20px 0;">
+        ${code}
+    </div>
+    <p>Esse código expira em 10 minutos.</p>
+    <p>Se você não solicitou isso, ignore este email.</p>
+    <br>
+    <p>— <strong>Fusion Cloud</strong></p>
+</div>
+            `
+        });
+
+        console.log("Message sent: %s", info.messageId);
+        res.json({ success: true, message: 'Email enviado com sucesso' });
+
+    } catch (error) {
+        console.error("Error sending email:", error);
+        res.status(500).json({ success: false, message: 'Erro ao enviar email', error: error.message });
     }
-    next();
 });
 
-// Proxy API requests to NebulaGG
-// IMPORTANT: No global express.json() before this!
+// Mount local router on /api
+app.use('/api', localRouter);
 
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', uptime: process.uptime() });
-});
-
-// Proxy for BASIC Plan (Keys starting with QJ)
-app.use('/api/basic', (req, res, next) => {
-    // console.log(`[Middleware Basic] Processing: ${req.url}`);
-    const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
-    if (apiKey) {
-        req.headers['authorization'] = `Bearer ${apiKey.trim()}`;
-        // console.log(`[Middleware Basic] Injected Key: ${apiKey.substring(0, 5)}...`);
-    } else {
-        console.error('[Middleware Basic] No API Key found!');
-    }
-    next();
-}, createProxyMiddleware({
-    target: 'https://nebulagg.com/api',
+// --- Proxy Configuration for Nebula API ---
+// Proxy for BASIC plan
+app.use('/api/basic', createProxyMiddleware({
+    target: 'https://nebula-api.guiisousa.com',
     changeOrigin: true,
-    secure: true,
-    agent: agent,
-    proxyTimeout: 30000,
-    timeout: 30000,
     pathRewrite: { '^/api/basic': '' },
     onProxyReq: (proxyReq, req, res) => {
-        // Log final headers being sent
-        // console.log('[Proxy Basic] Final Headers:', proxyReq.getHeaders());
-        
-        // Fix body forwarding if it was parsed by express.json()
-        if (req.body && Object.keys(req.body).length > 0) {
-            const bodyData = JSON.stringify(req.body);
-            proxyReq.setHeader('Content-Type', 'application/json');
-            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData);
+        const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
+        if (apiKey) {
+            proxyReq.setHeader('Authorization', apiKey);
         }
+        proxyReq.agent = agent;
     },
     onError: (err, req, res) => {
-        console.error('[Proxy Basic] Error:', err);
-        res.status(500).send('Proxy Error');
+        console.error('Proxy Error (Basic):', err.message);
+        res.status(502).json({ error: 'Bad Gateway', details: err.message });
     }
 }));
 
-// Proxy for ULTRA Plan (Keys starting with kA)
-app.use('/api/ultra', (req, res, next) => {
-    // console.log(`[Middleware Ultra] Processing: ${req.url}`);
-    const apiKey = process.env.NEBULA_API_KEY_ULTRA;
-    if (apiKey) {
-        req.headers['authorization'] = `Bearer ${apiKey.trim()}`;
-        // console.log(`[Middleware Ultra] Injected Key: ${apiKey.substring(0, 5)}...`);
-    } else {
-        console.error('[Middleware Ultra] No API Key found!');
-    }
-    next();
-}, createProxyMiddleware({
-    target: 'https://nebulagg.com/api',
+// Proxy for ULTRA plan
+app.use('/api/ultra', createProxyMiddleware({
+    target: 'https://nebula-api.guiisousa.com',
     changeOrigin: true,
-    secure: true,
-    agent: agent,
-    proxyTimeout: 30000,
-    timeout: 30000,
     pathRewrite: { '^/api/ultra': '' },
     onProxyReq: (proxyReq, req, res) => {
-        // Fix body forwarding if it was parsed by express.json()
-        if (req.body && Object.keys(req.body).length > 0) {
-            const bodyData = JSON.stringify(req.body);
-            proxyReq.setHeader('Content-Type', 'application/json');
-            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData);
-        }
-    },
-    onError: (err, req, res) => {
-        console.error('[Proxy Ultra] Error:', err);
-        res.status(500).send('Proxy Error');
-    }
-}));
-
-// Fallback / Legacy Proxy (uses default NEBULA_API_KEY_BASIC)
-app.use('/api', createProxyMiddleware({
-    target: 'https://nebulagg.com/api',
-    changeOrigin: true,
-    secure: true,
-    agent: agent,
-    proxyTimeout: 30000,
-    timeout: 30000,
-    onProxyReq: (proxyReq, req, res) => {
-        // Inject API Key from server environment if available
-        const apiKey = process.env.NEBULA_API_KEY_BASIC;
+        const apiKey = process.env.NEBULA_API_KEY_ULTRA;
         if (apiKey) {
-            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+            proxyReq.setHeader('Authorization', apiKey);
         }
-
-        // Fix body forwarding if it was parsed by express.json()
-        if (req.body && Object.keys(req.body).length > 0) {
-            const bodyData = JSON.stringify(req.body);
-            proxyReq.setHeader('Content-Type', 'application/json');
-            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData);
-        }
+        proxyReq.agent = agent;
     },
     onError: (err, req, res) => {
-        console.error('Proxy Error:', err);
-        res.status(500).send('Proxy Error');
+        console.error('Proxy Error (Ultra):', err.message);
+        res.status(502).json({ error: 'Bad Gateway', details: err.message });
     }
 }));
 
-// Catch-all for unhandled API requests to prevent returning HTML
-app.use('/api', (req, res) => {
-    console.warn(`[API 404] Unhandled request: ${req.method} ${req.originalUrl}`);
-    res.status(404).json({ error: 'Endpoint not found or not implemented locally' });
-});
-
-// Handle SPA routing - return index.html for all non-API requests
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static('dist'));
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    });
+}
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

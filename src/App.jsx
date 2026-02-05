@@ -98,6 +98,7 @@ function App() {
             <Route path="/checkout-ultra" element={<CheckoutUltra />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/profile" element={<DashboardProfile />} />
             <Route path="/dashboard/invoices" element={<DashboardInvoices />} />

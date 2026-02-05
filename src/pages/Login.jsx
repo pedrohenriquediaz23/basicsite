@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Loader2, LogIn } from 'lucide-react';
+import { supabase } from '../supabase';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,7 +18,29 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(email, password);
+      const user = await login(email, password);
+      
+      // Check verification status from profiles table
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_verified')
+            .eq('id', user.id)
+            .single();
+        
+        if (profileError) {
+            console.error('Error checking verification:', profileError);
+            // If error (e.g. no profile), allow login or block?
+            // Let's assume block if we can't verify status, OR allow if profile missing (legacy users)
+            // But new users have profile.
+            // If profile is missing, it's likely a legacy user, so allow.
+        } else if (profile && profile.is_verified === false) {
+            // Not verified
+            navigate('/verify-email');
+            return;
+        }
+      }
+
       navigate('/');
     } catch (err) {
       setError(err.message || 'Falha ao fazer login');
