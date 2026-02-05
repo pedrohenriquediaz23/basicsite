@@ -307,6 +307,14 @@ app.use('/api', createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
+    onProxyReq: (proxyReq, req, res) => {
+        // Inject API Key from server environment if available
+        // This allows configuring the key in Railway Variables without rebuilding the frontend
+        const apiKey = process.env.VITE_NEBULA_API_KEY || process.env.NEBULA_API_KEY;
+        if (apiKey) {
+            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+        }
+    },
     onError: (err, req, res) => {
         console.error('Proxy Error:', err);
         res.status(500).send('Proxy Error');
