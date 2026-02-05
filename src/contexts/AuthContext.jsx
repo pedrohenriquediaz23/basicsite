@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('fusion_users');
         storedUsers = [];
       }
-try {
+
       if (!Array.isArray(storedUsers)) storedUsers = [];
 
       // REMOVE LEGACY ADMIN IF EXISTS (Cleanup)
