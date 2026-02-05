@@ -34,6 +34,8 @@ export const AuthProvider = ({ children }) => {
 
       if (!Array.isArray(storedUsers)) storedUsers = [];
 
+      // Legacy admin seed removed in favor of Server-Side Env Var Auth
+      /*
       if (!storedUsers.some(u => u.email === 'admin@fusion.com')) {
           const adminUser = {
               id: 'admin-001',
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }) => {
           storedUsers.push(adminUser);
           localStorage.setItem('fusion_users', JSON.stringify(storedUsers));
       }
+      */
     } catch (error) {
       console.error('Auth initialization error:', error);
     } finally {

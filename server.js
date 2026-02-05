@@ -316,6 +316,7 @@ app.post('/api/auth/login', express.json(), (req, res, next) => {
                 id: 'admin-local',
                 email: email,
                 role: 'admin',
+                isAdmin: true, // Ensure compatibility with legacy checks
                 name: 'Administrator'
             },
             vault: null
