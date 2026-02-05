@@ -301,6 +301,29 @@ app.use('/api/chat', chatRouter);
 // Serve static files from dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// --- Local Admin Override ---
+// Intercept login requests to check for local admin credentials from env vars
+app.post('/api/auth/login', express.json(), (req, res, next) => {
+    const { email, password } = req.body;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPass = process.env.ADMIN_PASSWORD;
+
+    if (adminEmail && adminPass && email === adminEmail && password === adminPass) {
+        console.log(`[Auth] Admin login via env vars: ${email}`);
+        return res.json({
+            ok: true,
+            user: {
+                id: 'admin-local',
+                email: email,
+                role: 'admin',
+                name: 'Administrator'
+            },
+            vault: null
+        });
+    }
+    next();
+});
+
 // Proxy API requests to NebulaGG
 // IMPORTANT: No global express.json() before this!
 app.use('/api', createProxyMiddleware({
@@ -309,10 +332,17 @@ app.use('/api', createProxyMiddleware({
     secure: true,
     onProxyReq: (proxyReq, req, res) => {
         // Inject API Key from server environment if available
-        // This allows configuring the key in Railway Variables without rebuilding the frontend
         const apiKey = process.env.VITE_NEBULA_API_KEY || process.env.NEBULA_API_KEY;
         if (apiKey) {
             proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+        }
+
+        // Fix body forwarding if it was parsed by express.json()
+        if (req.body && Object.keys(req.body).length > 0) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
         }
     },
     onError: (err, req, res) => {
