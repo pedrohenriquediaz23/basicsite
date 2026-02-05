@@ -13,7 +13,7 @@ const HowItWorks = () => {
                  
                  <div className="flex-1 bg-black rounded-t-lg overflow-hidden relative group border border-gray-800">
                     <iframe 
-                        src="https://www.youtube.com/embed/IkjfA52_sKs" 
+                        src="https://www.youtube-nocookie.com/embed/IkjfA52_sKs" 
                         title="Tutorial GTA RP" 
                         className="w-full h-full absolute inset-0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
