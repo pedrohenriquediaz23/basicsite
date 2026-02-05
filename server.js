@@ -17,6 +17,7 @@ dotenv.config();
 console.log('--- Server Startup Config ---');
 console.log('BASIC Key Present:', !!(process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY));
 console.log('ULTRA Key Present:', !!process.env.NEBULA_API_KEY_ULTRA);
+console.log('SUPABASE ADMIN Key Present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 console.log('-----------------------------');
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,6 +44,85 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// --- Proxy Configuration from 'pegando' (Working Version) ---
+
+// Keep-alive agent to reuse connections and avoid exhaustion (ensure this matches pegando)
+const proxyAgent = new https.Agent({
+    keepAlive: true,
+    keepAliveMsecs: 1000,
+    maxSockets: 50,
+    timeout: 30000
+});
+
+// Proxy for BASIC Plan (Keys starting with QJ)
+app.use('/api/basic', (req, res, next) => {
+    // console.log(`[Middleware Basic] Processing: ${req.url}`);
+    const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
+    if (apiKey) {
+        req.headers['authorization'] = `Bearer ${apiKey.trim()}`;
+    } else {
+        console.error('[Middleware Basic] No API Key found!');
+    }
+    next();
+}, createProxyMiddleware({
+    target: 'https://nebulagg.com/api',
+    changeOrigin: true,
+    secure: true,
+    agent: proxyAgent,
+    proxyTimeout: 30000,
+    timeout: 30000,
+    pathRewrite: { '^/api/basic': '' },
+    onProxyReq: (proxyReq, req, res) => {
+        // Fix body forwarding if it was parsed by express.json()
+        if (req.body && Object.keys(req.body).length > 0) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onError: (err, req, res) => {
+        console.error('[Proxy Basic] Error:', err);
+        res.status(500).send('Proxy Error');
+    }
+}));
+
+// Proxy for ULTRA Plan (Keys starting with kA)
+app.use('/api/ultra', (req, res, next) => {
+    // console.log(`[Middleware Ultra] Processing: ${req.url}`);
+    const apiKey = process.env.NEBULA_API_KEY_ULTRA;
+    if (apiKey) {
+        req.headers['authorization'] = `Bearer ${apiKey.trim()}`;
+    } else {
+        console.error('[Middleware Ultra] No API Key found!');
+    }
+    next();
+}, createProxyMiddleware({
+    target: 'https://nebulagg.com/api',
+    changeOrigin: true,
+    secure: true,
+    agent: proxyAgent,
+    proxyTimeout: 30000,
+    timeout: 30000,
+    pathRewrite: { '^/api/ultra': '' },
+    onProxyReq: (proxyReq, req, res) => {
+        // Fix body forwarding if it was parsed by express.json()
+        if (req.body && Object.keys(req.body).length > 0) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onError: (err, req, res) => {
+        console.error('[Proxy Ultra] Error:', err);
+        res.status(500).send('Proxy Error');
+    }
+}));
+
+// Fallback / Legacy Proxy (uses default NEBULA_API_KEY_BASIC) moved to after localRouter to allow local routes to take precedence
+
 
 // Helper for data persistence
 const DATA_DIR = path.join(__dirname, 'data');
@@ -131,6 +211,11 @@ localRouter.get('/user/disks/:email', (req, res) => {
     const { email } = req.params;
     const ownerships = readJson(OWNERSHIP_FILE);
     res.json({ disks: ownerships[email] || [] });
+});
+
+localRouter.get('/local/ownerships', (req, res) => {
+    const ownerships = readJson(OWNERSHIP_FILE);
+    res.json(ownerships);
 });
 
 // --- EMAIL ENDPOINT ---
@@ -335,40 +420,33 @@ localRouter.post('/reset-password', async (req, res) => {
 // Mount local router on /api
 app.use('/api', localRouter);
 
-// --- Proxy Configuration for Nebula API ---
-// Proxy for BASIC plan
-app.use('/api/basic', createProxyMiddleware({
-    target: 'https://nebula-api.guiisousa.com',
+// Fallback / Legacy Proxy (uses default NEBULA_API_KEY_BASIC)
+// Must be after localRouter to allow local routes to take precedence
+app.use('/api', createProxyMiddleware({
+    target: 'https://nebulagg.com/api',
     changeOrigin: true,
-    pathRewrite: { '^/api/basic': '' },
+    secure: true,
+    agent: proxyAgent,
+    proxyTimeout: 30000,
+    timeout: 30000,
     onProxyReq: (proxyReq, req, res) => {
-        const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
+        // Inject API Key from server environment if available
+        const apiKey = process.env.NEBULA_API_KEY_BASIC;
         if (apiKey) {
-            proxyReq.setHeader('Authorization', apiKey);
+            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
         }
-        proxyReq.agent = agent;
-    },
-    onError: (err, req, res) => {
-        console.error('Proxy Error (Basic):', err.message);
-        res.status(502).json({ error: 'Bad Gateway', details: err.message });
-    }
-}));
 
-// Proxy for ULTRA plan
-app.use('/api/ultra', createProxyMiddleware({
-    target: 'https://nebula-api.guiisousa.com',
-    changeOrigin: true,
-    pathRewrite: { '^/api/ultra': '' },
-    onProxyReq: (proxyReq, req, res) => {
-        const apiKey = process.env.NEBULA_API_KEY_ULTRA;
-        if (apiKey) {
-            proxyReq.setHeader('Authorization', apiKey);
+        // Fix body forwarding if it was parsed by express.json()
+        if (req.body && Object.keys(req.body).length > 0) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
         }
-        proxyReq.agent = agent;
     },
     onError: (err, req, res) => {
-        console.error('Proxy Error (Ultra):', err.message);
-        res.status(502).json({ error: 'Bad Gateway', details: err.message });
+        console.error('Proxy Error:', err);
+        res.status(500).send('Proxy Error');
     }
 }));
 
