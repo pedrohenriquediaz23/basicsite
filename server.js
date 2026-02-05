@@ -7,12 +7,21 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
+import https from 'https';
 
 // Load env vars
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Keep-alive agent to reuse connections and avoid exhaustion
+const agent = new https.Agent({
+    keepAlive: true,
+    keepAliveMsecs: 1000,
+    maxSockets: 50,
+    timeout: 30000
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -328,11 +337,18 @@ app.post('/api/auth/login', express.json(), (req, res, next) => {
 // Proxy API requests to NebulaGG
 // IMPORTANT: No global express.json() before this!
 
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
 // Proxy for BASIC Plan (Keys starting with QJ)
 app.use('/api/basic', createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
+    agent: agent,
+    proxyTimeout: 30000,
+    timeout: 30000,
     pathRewrite: { '^/api/basic': '' },
     onProxyReq: (proxyReq, req, res) => {
         const apiKey = process.env.NEBULA_API_KEY_BASIC;
@@ -357,6 +373,9 @@ app.use('/api/ultra', createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
+    agent: agent,
+    proxyTimeout: 30000,
+    timeout: 30000,
     pathRewrite: { '^/api/ultra': '' },
     onProxyReq: (proxyReq, req, res) => {
         const apiKey = process.env.NEBULA_API_KEY_ULTRA;
@@ -381,6 +400,9 @@ app.use('/api', createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
+    agent: agent,
+    proxyTimeout: 30000,
+    timeout: 30000,
     onProxyReq: (proxyReq, req, res) => {
         // Inject API Key from server environment if available
         const apiKey = process.env.NEBULA_API_KEY_BASIC;

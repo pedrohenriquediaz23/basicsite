@@ -277,6 +277,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const vmsRef = useRef([]);
+  const isRefreshingRef = useRef(false);
   
   // Redeem Token State
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
@@ -346,30 +347,63 @@ const Dashboard = () => {
   }, []);
 
   const refreshVmStatuses = async (currentVms) => {
-    const results = await Promise.allSettled(
-      (currentVms || []).map(async (vm) => {
-        const diskName = vm?.name;
-        if (!diskName) return null;
-        if (vm?.status === 'expired') return null;
-        const statusRes = await nebulaService.getStatus(diskName, vm?.planType);
-        if (!statusRes?.status) return null;
-        return { id: vm?.id, status: statusRes.status };
-      })
-    );
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
 
-    const statusById = results.reduce((acc, r) => {
-      if (r.status !== 'fulfilled' || !r.value?.id) return acc;
-      acc[r.value.id] = r.value.status;
-      return acc;
-    }, {});
+    try {
+        const vmsToUpdate = (currentVms || []).filter(vm => 
+            vm?.name && vm?.status !== 'expired'
+        );
 
-    setVms((prev) =>
-      (prev || []).map((vm) => {
-        const nextStatus = statusById[vm?.id];
-        if (!nextStatus) return vm;
-        return { ...vm, status: nextStatus };
-      })
-    );
+        // Simple concurrency control to avoid DDoS-ing the backend/proxy
+        const CONCURRENCY_LIMIT = 2; // Conservative limit
+        const results = [];
+        
+        for (let i = 0; i < vmsToUpdate.length; i += CONCURRENCY_LIMIT) {
+            const chunk = vmsToUpdate.slice(i, i + CONCURRENCY_LIMIT);
+            
+            const chunkResults = await Promise.allSettled(chunk.map(async (vm) => {
+                try {
+                    // Small random delay to prevent exact simultaneous hits
+                    await new Promise(r => setTimeout(r, Math.random() * 200));
+                    
+                    const statusRes = await nebulaService.getStatus(vm.name, vm.planType);
+                    if (!statusRes?.status) return null;
+                    return { id: vm.id, status: statusRes.status };
+                } catch (e) {
+                    console.warn(`Failed to update status for ${vm.name}`, e);
+                    return null;
+                }
+            }));
+            
+            results.push(...chunkResults);
+            
+            // Delay between chunks to let the event loop breathe
+            if (i + CONCURRENCY_LIMIT < vmsToUpdate.length) {
+                await new Promise(r => setTimeout(r, 800));
+            }
+        }
+
+        const statusById = results.reduce((acc, r) => {
+          if (r.status !== 'fulfilled' || !r.value?.id) return acc;
+          acc[r.value.id] = r.value.status;
+          return acc;
+        }, {});
+
+        setVms((prev) =>
+          (prev || []).map((vm) => {
+            const nextStatus = statusById[vm?.id];
+            if (!nextStatus) return vm;
+            // Only update if changed
+            if (vm.status === nextStatus) return vm;
+            return { ...vm, status: nextStatus };
+          })
+        );
+    } catch (err) {
+        console.error('Error refreshing statuses:', err);
+    } finally {
+        isRefreshingRef.current = false;
+    }
   };
 
   const loadVms = async () => {
