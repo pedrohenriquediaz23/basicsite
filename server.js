@@ -327,6 +327,56 @@ app.post('/api/auth/login', express.json(), (req, res, next) => {
 
 // Proxy API requests to NebulaGG
 // IMPORTANT: No global express.json() before this!
+
+// Proxy for BASIC Plan (Keys starting with QJ)
+app.use('/api/basic', createProxyMiddleware({
+    target: 'https://nebulagg.com/api',
+    changeOrigin: true,
+    secure: true,
+    pathRewrite: { '^/api/basic': '' },
+    onProxyReq: (proxyReq, req, res) => {
+        const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
+        if (apiKey) {
+            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+        }
+        if (req.body && Object.keys(req.body).length > 0) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onError: (err, req, res) => {
+        console.error('[Proxy Basic] Error:', err);
+        res.status(500).send('Proxy Error');
+    }
+}));
+
+// Proxy for ULTRA Plan (Keys starting with kA)
+app.use('/api/ultra', createProxyMiddleware({
+    target: 'https://nebulagg.com/api',
+    changeOrigin: true,
+    secure: true,
+    pathRewrite: { '^/api/ultra': '' },
+    onProxyReq: (proxyReq, req, res) => {
+        const apiKey = process.env.NEBULA_API_KEY_ULTRA;
+        if (apiKey) {
+            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+        }
+        if (req.body && Object.keys(req.body).length > 0) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onError: (err, req, res) => {
+        console.error('[Proxy Ultra] Error:', err);
+        res.status(500).send('Proxy Error');
+    }
+}));
+
+// Fallback / Legacy Proxy (uses default VITE_NEBULA_API_KEY)
 app.use('/api', createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,

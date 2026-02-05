@@ -215,30 +215,31 @@ export const nebulaService = {
     }
     
     try {
-        // Prepare local storage ownerships and VMs
+        // Fetch ownerships first
         let ownerships = {};
         try {
              const res = await fetch('/api/local/ownerships');
              if (res.ok) ownerships = await res.json();
         } catch (e) { console.error('Failed to fetch ownerships', e); }
         
-        // Always fetch local VMs as well
-        const localVMs = getStoredVMs().map(vm => {
-             const localOwner = ownerships[vm.id];
-             if (localOwner) {
-                 return { ...vm, ownerId: localOwner.ownerId, ownerEmail: localOwner.ownerEmail };
-             }
-             return vm;
-        });
-
-        // Try fetching from API
-        let apiDisks = [];
-        try {
-             // Mapped to /api/legacy/gcp/getall per docs
-             const response = await callAPI('/api/legacy/gcp/getall', 'GET');
-             
-             if (response && response.data && Array.isArray(response.data.disks)) {
-                apiDisks = response.data.disks.map((disk) => {
+        // Helper to fetch and map disks
+        const fetchDisks = async (endpoint, planType) => {
+            try {
+                // Remove /api prefix from endpoint for callAPI as it adds BASE_URL which is empty string currently
+                // But wait, callAPI is simple wrapper.
+                // We need to call our proxy endpoints: /api/basic/... and /api/ultra/...
+                // The callAPI function prepends BASE_URL which is empty.
+                // So we pass the full path.
+                const response = await callAPI(endpoint, 'GET');
+                
+                let disks = [];
+                if (response && response.data && Array.isArray(response.data.disks)) {
+                    disks = response.data.disks;
+                } else if (Array.isArray(response)) {
+                    disks = response;
+                }
+                
+                return disks.map(disk => {
                     const cached = getCachedStatus(disk.name);
                     const status = disk.isActive ? (cached || 'unknown') : 'expired';
                     const localOwner = ownerships[disk.id];
@@ -247,6 +248,7 @@ export const nebulaService = {
                         id: disk.id,
                         name: disk.name,
                         status,
+                        planType, // 'basic' or 'ultra'
                         created_at: formatPtBrDate(disk.createdAt),
                         expires_at: formatPtBrDate(disk.validUntil),
                         sizeGb: disk.sizeGB,
@@ -259,21 +261,31 @@ export const nebulaService = {
                         }
                     };
                 });
-             } else if (Array.isArray(response)) {
-                apiDisks = response.map(vm => ({
-                    ...vm,
-                    status: normalizeVmPowerStatus(vm.status) || 'unknown'
-                }));
-             }
-        } catch (apiError) {
-             console.warn('API fetch failed, falling back to local only:', apiError);
-        }
+            } catch (err) {
+                console.warn(`Failed to fetch ${planType} disks:`, err);
+                return [];
+            }
+        };
+
+        // Fetch from both Basic and Ultra proxies in parallel
+        const [basicDisks, ultraDisks] = await Promise.all([
+            fetchDisks('/api/basic/legacy/gcp/getall', 'basic'),
+            fetchDisks('/api/ultra/legacy/gcp/getall', 'ultra')
+        ]);
         
+        const apiDisks = [...basicDisks, ...ultraDisks];
+        
+        // Always fetch local VMs as well
+        const localVMs = getStoredVMs().map(vm => {
+             const localOwner = ownerships[vm.id];
+             if (localOwner) {
+                 return { ...vm, ownerId: localOwner.ownerId, ownerEmail: localOwner.ownerEmail };
+             }
+             return vm;
+        });
+
         // Merge API disks with Local VMs
         // Priority: API disks (if ID matches), but keep local ones that don't exist in API
-        // Since API and Local might have different ID schemes, we just concat them 
-        // ensuring no duplicates by ID if possible.
-        
         const allDisks = [...apiDisks];
         localVMs.forEach(local => {
             if (!allDisks.some(api => api.id === local.id)) {
@@ -284,9 +296,9 @@ export const nebulaService = {
         return allDisks;
 
     } catch (error) {
-        console.error('Critical Error in getAll:', error);
-        // Fallback to local VMs if everything else fails catastrophically
-        return getStoredVMs(); 
+        console.error('API Error (getAll):', error);
+        // Fallback to local only or throw
+        throw error; 
     }
   },
 

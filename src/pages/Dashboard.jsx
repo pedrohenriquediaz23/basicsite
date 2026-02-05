@@ -55,6 +55,24 @@ const VMCard = ({ vm, onAction }) => {
                 <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="text-[10px] font-bold uppercase">{statusText}</span>
               </div>
+              
+              {/* API Source Badge */}
+              {vm.planType && (
+                <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ml-2 ${
+                    vm.planType === 'basic'
+                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                        : vm.planType === 'ultra'
+                            ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
+                            : 'bg-gray-500/10 border-gray-500/20 text-gray-400'
+                }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${
+                        vm.planType === 'basic' ? 'bg-green-500' : vm.planType === 'ultra' ? 'bg-purple-500' : 'bg-gray-500'
+                    }`} />
+                    <span className="text-[10px] font-bold uppercase">
+                        {vm.planType === 'basic' ? 'API Operacional' : vm.planType === 'ultra' ? 'API Ultra' : vm.planType}
+                    </span>
+                </div>
+              )}
             </div>
             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
               <Activity className="w-3 h-3" />
