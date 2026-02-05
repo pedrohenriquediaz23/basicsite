@@ -12,6 +12,11 @@ import https from 'https';
 // Load env vars
 dotenv.config();
 
+console.log('--- Server Startup Config ---');
+console.log('BASIC Key Present:', !!(process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY));
+console.log('ULTRA Key Present:', !!process.env.NEBULA_API_KEY_ULTRA);
+console.log('-----------------------------');
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -342,7 +347,17 @@ app.get('/health', (req, res) => {
 });
 
 // Proxy for BASIC Plan (Keys starting with QJ)
-app.use('/api/basic', createProxyMiddleware({
+app.use('/api/basic', (req, res, next) => {
+    // console.log(`[Middleware Basic] Processing: ${req.url}`);
+    const apiKey = process.env.NEBULA_API_KEY_BASIC || process.env.VITE_NEBULA_API_KEY;
+    if (apiKey) {
+        req.headers['authorization'] = `Bearer ${apiKey.trim()}`;
+        // console.log(`[Middleware Basic] Injected Key: ${apiKey.substring(0, 5)}...`);
+    } else {
+        console.error('[Middleware Basic] No API Key found!');
+    }
+    next();
+}, createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
@@ -351,10 +366,10 @@ app.use('/api/basic', createProxyMiddleware({
     timeout: 30000,
     pathRewrite: { '^/api/basic': '' },
     onProxyReq: (proxyReq, req, res) => {
-        const apiKey = process.env.NEBULA_API_KEY_BASIC;
-        if (apiKey) {
-            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
-        }
+        // Log final headers being sent
+        // console.log('[Proxy Basic] Final Headers:', proxyReq.getHeaders());
+        
+        // Fix body forwarding if it was parsed by express.json()
         if (req.body && Object.keys(req.body).length > 0) {
             const bodyData = JSON.stringify(req.body);
             proxyReq.setHeader('Content-Type', 'application/json');
@@ -369,7 +384,17 @@ app.use('/api/basic', createProxyMiddleware({
 }));
 
 // Proxy for ULTRA Plan (Keys starting with kA)
-app.use('/api/ultra', createProxyMiddleware({
+app.use('/api/ultra', (req, res, next) => {
+    // console.log(`[Middleware Ultra] Processing: ${req.url}`);
+    const apiKey = process.env.NEBULA_API_KEY_ULTRA;
+    if (apiKey) {
+        req.headers['authorization'] = `Bearer ${apiKey.trim()}`;
+        // console.log(`[Middleware Ultra] Injected Key: ${apiKey.substring(0, 5)}...`);
+    } else {
+        console.error('[Middleware Ultra] No API Key found!');
+    }
+    next();
+}, createProxyMiddleware({
     target: 'https://nebulagg.com/api',
     changeOrigin: true,
     secure: true,
@@ -378,10 +403,7 @@ app.use('/api/ultra', createProxyMiddleware({
     timeout: 30000,
     pathRewrite: { '^/api/ultra': '' },
     onProxyReq: (proxyReq, req, res) => {
-        const apiKey = process.env.NEBULA_API_KEY_ULTRA;
-        if (apiKey) {
-            proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
-        }
+        // Fix body forwarding if it was parsed by express.json()
         if (req.body && Object.keys(req.body).length > 0) {
             const bodyData = JSON.stringify(req.body);
             proxyReq.setHeader('Content-Type', 'application/json');
