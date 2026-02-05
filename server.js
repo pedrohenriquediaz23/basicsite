@@ -227,14 +227,21 @@ localRouter.post('/send-verification-code', async (req, res) => {
     }
 
     try {
+        // Send Email
         const transporter = nodemailer.createTransport({
-            host: "smtp.hostinger.com",
-            port: 587,
-            secure: false, // true for 465, false for other ports
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
             auth: {
-                user: "suporte@grupofusioncloud.site",
-                pass: "FusionCloud2026@"
-            }
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            },
+            tls: {
+                rejectUnauthorized: false
+            },
+            connectionTimeout: 20000,
+            greetingTimeout: 20000,
+            socketTimeout: 20000
         });
 
         const info = await transporter.sendMail({
@@ -331,12 +338,12 @@ localRouter.post('/request-password-reset', async (req, res) => {
 
         // Send Email
         const transporter = nodemailer.createTransport({
-            host: "smtp.hostinger.com",
-            port: 587,
-            secure: false,
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
             auth: {
-                user: "suporte@grupofusioncloud.site",
-                pass: "FusionCloud2026@"
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
             }
         });
 
