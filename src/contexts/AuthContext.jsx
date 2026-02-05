@@ -55,7 +55,32 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    // MOCK AUTHENTICATION IMPLEMENTATION
+    // 1. Tenta login no Backend (Prioridade para Admin e Auth real)
+    try {
+      console.log(`Tentando login no backend: /api/auth/login`);
+      const response = await fetch(`/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      // Se o backend responder (mesmo com erro 401/400), processamos
+      if (response.ok) {
+          const data = await response.json();
+          if (data.ok || data.token || data.user) {
+              const userData = data.user || data;
+              setUser(userData);
+              localStorage.setItem('fusion_user', JSON.stringify(userData));
+              return userData;
+          }
+      }
+    } catch (error) {
+      console.warn('Backend login falhou ou offline, tentando mock local...', error);
+    }
+
+    // 2. Fallback para Mock Local (apenas se backend falhar ou não encontrar usuário)
     try {
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -75,39 +100,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Email ou senha inválidos');
       }
     } catch (error) {
-      console.error('Erro no login (Mock):', error);
-      throw error;
-    }
-
-    /* REAL BACKEND IMPLEMENTATION (DISABLED)
-    try {
-      console.log(`Tentando login em: ${API_URL}/login`);
-      const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Falha no login');
-      }
-
-      setUser(data);
-      localStorage.setItem('fusion_user', JSON.stringify(data));
-      
-      return data;
-    } catch (error) {
       console.error('Erro no login:', error);
-      if (error.message === 'Failed to fetch') {
-        throw new Error('Não foi possível conectar ao servidor. Verifique se o backend está online e a URL está correta.');
-      }
       throw error;
     }
-    */
   };
 
   const register = async (name, email, password, phone, cpf) => {
