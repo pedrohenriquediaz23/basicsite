@@ -215,53 +215,78 @@ export const nebulaService = {
     }
     
     try {
-        // Mapped to /api/legacy/gcp/getall per docs
-        const response = await callAPI('/api/legacy/gcp/getall', 'GET');
+        // Prepare local storage ownerships and VMs
+        let ownerships = {};
+        try {
+             const res = await fetch('/api/local/ownerships');
+             if (res.ok) ownerships = await res.json();
+        } catch (e) { console.error('Failed to fetch ownerships', e); }
         
-        // Handle nested structure: { success: true, data: { disks: [...] } }
-        if (response && response.data && Array.isArray(response.data.disks)) {
-            let ownerships = {};
-            try {
-                 const res = await fetch('/api/local/ownerships');
-                 if (res.ok) ownerships = await res.json();
-            } catch (e) { console.error('Failed to fetch ownerships', e); }
+        // Always fetch local VMs as well
+        const localVMs = getStoredVMs().map(vm => {
+             const localOwner = ownerships[vm.id];
+             if (localOwner) {
+                 return { ...vm, ownerId: localOwner.ownerId, ownerEmail: localOwner.ownerEmail };
+             }
+             return vm;
+        });
 
-            return response.data.disks.map((disk) => {
-                const cached = getCachedStatus(disk.name);
-                const status = disk.isActive ? (cached || 'unknown') : 'expired';
-                const localOwner = ownerships[disk.id];
-                
-                return {
-                    id: disk.id,
-                    name: disk.name,
-                    status,
-                    created_at: formatPtBrDate(disk.createdAt),
-                    expires_at: formatPtBrDate(disk.validUntil),
-                    sizeGb: disk.sizeGB,
-                    type: disk.provider,
-                    ownerId: localOwner?.ownerId || disk.ownerId || disk.userId || null,
-                    ownerEmail: localOwner?.ownerEmail || disk.ownerEmail || disk.userEmail || null,
-                    specs: {
-                        cpu: disk.vCpus ? `${disk.vCpus} vCPUs` : undefined,
-                        storage: disk.sizeGB
-                    }
-                };
-            });
+        // Try fetching from API
+        let apiDisks = [];
+        try {
+             // Mapped to /api/legacy/gcp/getall per docs
+             const response = await callAPI('/api/legacy/gcp/getall', 'GET');
+             
+             if (response && response.data && Array.isArray(response.data.disks)) {
+                apiDisks = response.data.disks.map((disk) => {
+                    const cached = getCachedStatus(disk.name);
+                    const status = disk.isActive ? (cached || 'unknown') : 'expired';
+                    const localOwner = ownerships[disk.id];
+                    
+                    return {
+                        id: disk.id,
+                        name: disk.name,
+                        status,
+                        created_at: formatPtBrDate(disk.createdAt),
+                        expires_at: formatPtBrDate(disk.validUntil),
+                        sizeGb: disk.sizeGB,
+                        type: disk.provider,
+                        ownerId: localOwner?.ownerId || disk.ownerId || disk.userId || null,
+                        ownerEmail: localOwner?.ownerEmail || disk.ownerEmail || disk.userEmail || null,
+                        specs: {
+                            cpu: disk.vCpus ? `${disk.vCpus} vCPUs` : undefined,
+                            storage: disk.sizeGB
+                        }
+                    };
+                });
+             } else if (Array.isArray(response)) {
+                apiDisks = response.map(vm => ({
+                    ...vm,
+                    status: normalizeVmPowerStatus(vm.status) || 'unknown'
+                }));
+             }
+        } catch (apiError) {
+             console.warn('API fetch failed, falling back to local only:', apiError);
         }
         
-        // Handle if it returns directly an array (legacy/mock)
-        if (Array.isArray(response)) {
-            return response.map(vm => ({
-                ...vm,
-                status: normalizeVmPowerStatus(vm.status) || 'unknown'
-            }));
-        }
+        // Merge API disks with Local VMs
+        // Priority: API disks (if ID matches), but keep local ones that don't exist in API
+        // Since API and Local might have different ID schemes, we just concat them 
+        // ensuring no duplicates by ID if possible.
+        
+        const allDisks = [...apiDisks];
+        localVMs.forEach(local => {
+            if (!allDisks.some(api => api.id === local.id)) {
+                allDisks.push(local);
+            }
+        });
+        
+        return allDisks;
 
-        return [];
     } catch (error) {
-        console.error('API Error (getAll):', error);
-        // Fallback to empty list or throw depending on UX preference
-        throw error; 
+        console.error('Critical Error in getAll:', error);
+        // Fallback to local VMs if everything else fails catastrophically
+        return getStoredVMs(); 
     }
   },
 

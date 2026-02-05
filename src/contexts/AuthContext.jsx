@@ -31,8 +31,16 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('fusion_users');
         storedUsers = [];
       }
-
+try {
       if (!Array.isArray(storedUsers)) storedUsers = [];
+
+      // REMOVE LEGACY ADMIN IF EXISTS (Cleanup)
+      const legacyAdminIndex = storedUsers.findIndex(u => u.email === 'admin@fusion.com');
+      if (legacyAdminIndex !== -1) {
+          console.log('Removendo usuário admin legado (cleanup)...');
+          storedUsers.splice(legacyAdminIndex, 1);
+          localStorage.setItem('fusion_users', JSON.stringify(storedUsers));
+      }
 
       // Legacy admin seed removed in favor of Server-Side Env Var Auth
       /*
