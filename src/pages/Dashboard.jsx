@@ -251,7 +251,8 @@ const VMCard = ({ vm, onAction }) => {
 
 const Dashboard = () => {
   const user = JSON.parse(localStorage.getItem('fusion_user') || '{}');
-  const isAdmin = user?.isAdmin || false;
+  // Enhanced admin detection: checks boolean isAdmin OR role 'admin'
+  const isAdmin = user?.isAdmin === true || user?.role === 'admin';
 
   const [vms, setVms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -488,9 +489,20 @@ const Dashboard = () => {
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Meus Discos</h1>
             <div className="flex items-center gap-3">
-                <p className="text-gray-400">Gerencie seus discos virtuais e recursos</p>
+                <h1 className="text-3xl font-bold text-white mb-1">
+                    {isAdmin ? 'Painel Administrativo' : 'Meus Discos'}
+                </h1>
+                {isAdmin && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider">
+                        Admin Mode
+                    </span>
+                )}
+            </div>
+            <div className="flex items-center gap-3">
+                <p className="text-gray-400">
+                    {isAdmin ? 'Visão geral de todas as instâncias do sistema' : 'Gerencie seus discos virtuais e recursos'}
+                </p>
                 {!loading && !error && (
                     <span className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-bold flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
