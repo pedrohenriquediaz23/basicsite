@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import DashboardSidebar from '../components/DashboardSidebar';
 import { nebulaService } from '../services/nebulaService';
+import { useAuth } from '../contexts/AuthContext';
 
 const VMCard = ({ vm, onAction }) => {
   const [loading, setLoading] = useState(false);
@@ -268,7 +269,8 @@ const VMCard = ({ vm, onAction }) => {
 };
 
 const Dashboard = () => {
-  const user = JSON.parse(localStorage.getItem('fusion_user') || '{}');
+  const { user: authUser } = useAuth();
+  const user = authUser || {};
   // Enhanced admin detection: checks boolean isAdmin OR role 'admin'
   const isAdmin = user?.isAdmin === true || user?.role === 'admin';
 

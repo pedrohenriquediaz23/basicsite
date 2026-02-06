@@ -40,6 +40,15 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Sync user to localStorage for legacy components/external scripts
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('fusion_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('fusion_user');
+    }
+  }, [user]);
+
   const login = async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
