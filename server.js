@@ -8,7 +8,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
 import https from 'https';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 
 // Load env vars
@@ -33,6 +33,9 @@ const agent = new https.Agent({
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Enable CORS
 app.use(cors());
@@ -227,58 +230,24 @@ localRouter.post('/send-verification-code', async (req, res) => {
     }
 
     try {
-        // Send Email
-        const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true',
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            },
-            tls: {
-                rejectUnauthorized: false
-            },
-            connectionTimeout: 30000, // Increased to 30s
-            greetingTimeout: 30000,
-            socketTimeout: 30000,
-            family: 4, // Force IPv4 to avoid IPv6 issues on Railway
-            logger: true, // Enable logging
-            debug: true // Enable debug output
-        });
-
-        const info = await transporter.sendMail({
-            from: '"Fusion Cloud" <suporte@grupofusioncloud.site>',
+        // Send Email via Resend
+        const { data, error } = await resend.emails.send({
+            from: "Fusion Cloud <team@grupofusioncloud.site>",
             to: email,
-            subject: "Redefinição de senha - Fusion Cloud", // User text says "Redefinição de senha" but it's for verification. Keeping user's text.
-            text: `
-Olá!
-
-Seu código de verificação é:
-
-🔐 ${code}
-
-Esse código expira em 10 minutos.
-Se você não solicitou isso, ignore este email.
-
-— Fusion Cloud
-            `,
+            subject: "Código de verificação",
             html: `
-<div style="font-family: Arial, sans-serif; color: #333;">
-    <h2>Olá!</h2>
-    <p>Seu código de verificação é:</p>
-    <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 5px; text-align: center; margin: 20px 0;">
-        ${code}
-    </div>
-    <p>Esse código expira em 10 minutos.</p>
-    <p>Se você não solicitou isso, ignore este email.</p>
-    <br>
-    <p>— <strong>Fusion Cloud</strong></p>
-</div>
+                <h2>Verificação de conta</h2>
+                <p>Seu código:</p>
+                <h1>${code}</h1>
             `
         });
 
-        console.log("Message sent: %s", info.messageId);
+        if (error) {
+            console.error("Resend Error:", error);
+            throw new Error(error.message);
+        }
+
+        console.log("Message sent:", data.id);
         res.json({ success: true, message: 'Email enviado com sucesso' });
 
     } catch (error) {
@@ -339,34 +308,23 @@ localRouter.post('/request-password-reset', async (req, res) => {
             throw updateError;
         }
 
-        // Send Email
-        const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true',
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            }
-        });
-
-        await transporter.sendMail({
-            from: '"Fusion Cloud" <suporte@grupofusioncloud.site>',
+        // Send Email via Resend
+        const { data, error } = await resend.emails.send({
+            from: "Fusion Cloud <team@grupofusioncloud.site>",
             to: email,
             subject: "Recuperação de Senha - Fusion Cloud",
-            text: `Seu código de recuperação é: ${code}`,
             html: `
-            <div style="font-family: Arial, sans-serif; color: #333;">
                 <h2>Recuperação de Senha</h2>
                 <p>Use o código abaixo para redefinir sua senha:</p>
-                <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 5px; text-align: center; margin: 20px 0;">
-                    ${code}
-                </div>
+                <h1>${code}</h1>
                 <p>Esse código expira em 10 minutos.</p>
-                <p>— <strong>Fusion Cloud</strong></p>
-            </div>
             `
         });
+
+        if (error) {
+             console.error("Resend Error:", error);
+             throw new Error(error.message);
+        }
 
         res.json({ success: true, message: 'Código enviado com sucesso' });
 
