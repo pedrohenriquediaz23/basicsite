@@ -35,7 +35,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+if (!process.env.RESEND_API_KEY) {
+    console.error('CRITICAL ERROR: RESEND_API_KEY is missing from environment variables.');
+    console.error('Please add RESEND_API_KEY to your Railway project settings.');
+    // We don't exit here to allow other parts of the server to run, but email features will fail.
+}
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Enable CORS
 app.use(cors());
@@ -231,6 +236,9 @@ localRouter.post('/send-verification-code', async (req, res) => {
 
     try {
         // Send Email via Resend
+        if (!resend) {
+             throw new Error('Resend is not configured (missing RESEND_API_KEY)');
+        }
         const { data, error } = await resend.emails.send({
             from: "Fusion Cloud <team@grupofusioncloud.site>",
             to: email,
@@ -309,6 +317,9 @@ localRouter.post('/request-password-reset', async (req, res) => {
         }
 
         // Send Email via Resend
+        if (!resend) {
+             throw new Error('Resend is not configured (missing RESEND_API_KEY)');
+        }
         const { data, error } = await resend.emails.send({
             from: "Fusion Cloud <team@grupofusioncloud.site>",
             to: email,
