@@ -161,7 +161,7 @@ const localRouter = express.Router();
 // Enable body parsing ONLY for local routes
 localRouter.use(express.json());
 
-localRouter.post('/tokens/generate', (req, res) => {
+localRouter.post('/local/tokens/generate', (req, res) => {
     const { diskId, maxUses, duration } = req.body;
     const tokens = readJson(TOKENS_FILE);
     
@@ -182,7 +182,26 @@ localRouter.post('/tokens/generate', (req, res) => {
     res.json({ success: true, token, maxUses, diskId, duration });
 });
 
-localRouter.post('/tokens/redeem', (req, res) => {
+localRouter.get('/local/tokens', (req, res) => {
+    const tokens = readJson(TOKENS_FILE);
+    res.json(tokens);
+});
+
+localRouter.delete('/local/tokens/:token', (req, res) => {
+    const { token } = req.params;
+    let tokens = readJson(TOKENS_FILE);
+    const initialLength = tokens.length;
+    tokens = tokens.filter(t => t.token !== token);
+    
+    if (tokens.length === initialLength) {
+        return res.status(404).json({ success: false, message: 'Token não encontrado' });
+    }
+    
+    writeJson(TOKENS_FILE, tokens);
+    res.json({ success: true, message: 'Token removido' });
+});
+
+localRouter.post('/local/tokens/redeem', (req, res) => {
     const { token, user } = req.body;
     const cleanToken = (token || '').trim().toUpperCase();
     const tokens = readJson(TOKENS_FILE);
