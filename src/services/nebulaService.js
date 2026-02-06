@@ -220,10 +220,20 @@ export const nebulaService = {
     
     try {
         // Fetch ownerships first
-        let ownerships = {};
+        let diskOwnerships = {};
         try {
              const res = await fetch('/api/local/ownerships');
-             if (res.ok) ownerships = await res.json();
+             if (res.ok) {
+                 const rawOwnerships = await res.json();
+                 // Convert user->[disks] map to disk->owner map
+                 Object.entries(rawOwnerships).forEach(([ownerEmail, diskIds]) => {
+                     if (Array.isArray(diskIds)) {
+                         diskIds.forEach(diskId => {
+                             diskOwnerships[diskId] = { ownerEmail, ownerId: ownerEmail };
+                         });
+                     }
+                 });
+             }
         } catch (e) { console.error('Failed to fetch ownerships', e); }
         
         // Helper to fetch and map disks
@@ -246,7 +256,7 @@ export const nebulaService = {
                 return disks.map(disk => {
                     const cached = getCachedStatus(disk.name);
                     const status = disk.isActive ? (cached || 'unknown') : 'expired';
-                    const localOwner = ownerships[disk.id];
+                    const localOwner = diskOwnerships[disk.id];
                     
                     return {
                         id: disk.id,
@@ -281,7 +291,7 @@ export const nebulaService = {
         
         // Always fetch local VMs as well
         const localVMs = getStoredVMs().map(vm => {
-             const localOwner = ownerships[vm.id];
+             const localOwner = diskOwnerships[vm.id];
              if (localOwner) {
                  return { ...vm, ownerId: localOwner.ownerId, ownerEmail: localOwner.ownerEmail };
              }
@@ -409,14 +419,14 @@ export const nebulaService = {
       return data;
   },
 
-  redeemToken: async (token, user) => {
+  redeemToken: async (token, userEmail) => {
       const response = await fetch('/api/local/tokens/redeem', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, user })
+          body: JSON.stringify({ token, user: userEmail })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to redeem token');
+      if (!response.ok) throw new Error(data.error || data.message || 'Failed to redeem token');
       return data;
   },
 

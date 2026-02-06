@@ -498,7 +498,7 @@ const Dashboard = () => {
       e.preventDefault();
       if (!token) return;
       try {
-          await nebulaService.redeemToken(token.trim(), user);
+          await nebulaService.redeemToken(token.trim(), user?.email || user?.id);
           alert('Token resgatado com sucesso!');
           setToken('');
           setRedeemModalOpen(false);
